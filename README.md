@@ -634,6 +634,9 @@ Webcam access requires the operating system to grant camera permission to Python
 
 # 16. Academic Requirements
 
+For a code-level walkthrough of verified milestones, see
+[Code Documentation](context/code-documentation.md).
+
 This is an individual academic assignment.
 
 AI tools may be used to assist development and debugging, but the final code must be understood by the student.

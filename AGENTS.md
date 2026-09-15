@@ -30,6 +30,10 @@ Before making implementation changes, read:
 5. `context/planning/build-plan.md`
 6. `context/planning/progress-tracker.md`
 
+Also read relevant sections of `context/code-documentation.md` to understand the
+verified implementation. Check explanations against current code; this document
+describes implementation and does not override requirements.
+
 For GUI-related work, also read:
 
 7. `context/ui/ui-rules.md`
@@ -49,6 +53,7 @@ context/
 ├── project-overview.md
 ├── architecture.md
 ├── code-standards.md
+├── code-documentation.md
 ├── ui/
 │   └── ui-rules.md
 └── planning/
@@ -117,6 +122,7 @@ ComputerVisionApp/
 │   ├── project-overview.md
 │   ├── architecture.md
 │   ├── code-standards.md
+│   ├── code-documentation.md
 │   ├── ui/
 │   │   └── ui-rules.md
 │   └── planning/
@@ -210,6 +216,8 @@ Fix Problems
 Verify Stability
         ↓
 Update Progress
+        ↓
+After User Verification, Update Code Documentation Before Commit
 ```
 
 Do not immediately generate large amounts of code.
@@ -698,7 +706,32 @@ Development sequence changed
 
 Feature/milestone status changed
 → progress-tracker.md
+
+Implemented code verified and ready to commit
+→ code-documentation.md
 ```
+
+## Code Documentation
+
+Maintain one file: `context/code-documentation.md`.
+
+When the user confirms verification and the changes are ready to commit, update
+this file before creating the commit. Include the documentation in that commit.
+This rule does not authorize a commit or push by itself.
+
+Explain the verified code at a level the student can understand and discuss:
+
+* Files, classes, functions, and their responsibilities.
+* Startup, callbacks, and end-to-end execution flow.
+* Important state, inputs, outputs, and image representations.
+* Validation, expected errors, and resource cleanup.
+* Key implementation choices and small concrete examples.
+
+Document only implemented, verified behavior. Do not describe planned or
+unfinished milestone code as complete. Update existing explanations when behavior
+changes instead of appending conflicting descriptions. Identify the milestones
+covered, and keep test status in the progress tracker and manual steps in README.
+Avoid copying entire source files or creating a separate document per milestone.
 
 Do not create documentation for documentation's sake.
 
@@ -786,6 +819,7 @@ A feature is complete when:
 * Code is understandable.
 * Relevant verification has been performed.
 * Progress tracker is updated when appropriate.
+* After user verification, code documentation is current before the commit.
 
 A milestone is complete only when all planned features meet these conditions.
 

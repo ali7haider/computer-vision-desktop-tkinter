@@ -13,9 +13,16 @@ continuous preview updates during resizing.
 
 ## Current Task
 
-Prepare the completed M2 changes for the user's manual push. M3 is next.
+Review code-level documentation for the committed M1/M2 implementation before M3.
 
 ## Completed
+
+### Code Documentation
+
+* Added `context/code-documentation.md` explaining the committed M1/M2 code,
+  state, callback flow, preview conversion, resizing, file I/O, and error handling.
+* Updated `AGENTS.md` to require code documentation after user verification,
+  before implementation commits.
 
 ### Project Planning
 
@@ -118,10 +125,12 @@ See `build-plan.md` for milestone scopes.
 
 ## Next Steps
 
-1. User pushes the completed M2 commit.
-2. Proceed to M3 — Color + Statistics.
+1. Review the new M1/M2 code documentation.
+2. Resume M3 — Color + Statistics when requested.
 
 ## Recent Changes
+
+* Documented committed M1/M2 code and added the documentation workflow rule.
 
 * Implemented and checked the M1 shell.
 * Marked M1 complete after user verification.
