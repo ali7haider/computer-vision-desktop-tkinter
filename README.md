@@ -1,69 +1,171 @@
-# Computer Vision App — Full Development Plan
+# Interactive Computer Vision Tool with GUI
 
-## 1. Project Goal
+A desktop computer vision application built using **Python, OpenCV, and Tkinter**.
 
-Build a **standalone desktop Computer Vision application** using **Python, OpenCV, and Tkinter**.
+The application allows users to open images or use a webcam, apply different image-processing and computer-vision operations, adjust parameters interactively, preview the results, and save the processed output.
 
-The application will allow the user to:
+This project is developed as an **academic assignment**. The focus is on:
 
-* Open local images
-* Access the live webcam
-* Take a webcam snapshot
-* Apply multiple image-processing and computer-vision operations
-* Adjust operation parameters interactively
-* Preview results
-* Reset the image
-* Save the processed output
-* Handle invalid input and common edge cases without crashing
+* Correct implementation
+* Simple and understandable code
+* Clear separation of responsibilities
+* Interactive parameter control
+* Input validation
+* Safe error handling
+* A GUI that remains stable during invalid operations
 
-The application will remain **simple and academic**, not production-level software. However, we will still follow good coding practices such as separating responsibilities into folders/modules, keeping functions small, avoiding global state, validating input, and releasing webcam resources correctly.
-
-The assignment requires structured Python code rather than one giant script, while using OpenCV and Tkinter and running locally from the terminal.
+The project intentionally avoids unnecessary production-level complexity.
 
 ---
 
-# 2. Development Philosophy
+# 1. Technology
 
-We will follow this principle:
+The project uses:
 
-> Simple implementation + clean structure + understandable code + full assignment compliance.
+* **Python**
+* **OpenCV**
+* **Tkinter**
+* **NumPy**
 
-We will avoid unnecessary complexity.
+The application must run **locally from the terminal**.
 
-We will use:
+Example:
 
-* Python
-* OpenCV
-* Tkinter
-* Standard Python libraries where required
-* One main application class
-* Separate processing modules
-* Simple helper functions
-* Straightforward validation
-* Simple GUI callbacks
+```bash
+python main.py
+```
 
-We will NOT introduce:
-
-* Database
-* Backend/API
-* Authentication
-* Web framework
-* Docker
-* Dependency injection
-* Repository pattern
-* Plugin architecture
-* Complex MVC framework
-* Undo/redo engine
-* Complex threading
-* Production logging systems
-* Cloud services
-* Machine-learning models
-
-The goal is that every file and function should be easy to understand and explain during the technical interview.
+No web framework or PyQt is used.
 
 ---
 
-# 3. Final Project Structure
+# 2. Main Features
+
+The application will provide a single desktop GUI for loading, processing, viewing, and saving images.
+
+## Image Input
+
+Users can:
+
+* Open an image from their computer
+* Support at least JPG, PNG, and BMP
+* Access the system webcam
+* View the webcam feed inside the application
+* Take a snapshot from the webcam
+* Continue processing the captured snapshot as a normal image
+
+## Image Output
+
+Users can:
+
+* View the current processed result
+* Save the currently displayed image using **File → Save As...**
+
+## Interactive GUI
+
+The interface includes:
+
+* Menu bar
+* Buttons
+* Sliders / trackbars
+* Numeric text inputs
+* Image display area
+* Webcam snapshot control
+* Error/warning messages
+
+Parameters should update the image interactively where appropriate.
+
+---
+
+# 3. Image Processing Operations
+
+The application must implement at least **10 image-processing and computer-vision operations** while satisfying the required assignment categories.
+
+Operations are organized by responsibility.
+
+## Color and Foundations
+
+Located in:
+
+```text
+processing/color.py
+```
+
+Examples include:
+
+* RGB channel manipulation
+* Grayscale conversion
+* Brightness and contrast adjustment
+* HSV adjustment
+* Color blindness simulation
+
+Only the operations selected for the final implementation need to be included.
+
+## Image Statistics
+
+Located in:
+
+```text
+processing/statistics.py
+```
+
+Required operations:
+
+* Histogram computation and display
+* Histogram equalization
+
+## Filters and Local Operators
+
+Located in:
+
+```text
+processing/filters.py
+```
+
+Possible operations include:
+
+* Contrast stretching
+* Median filtering
+* Gaussian smoothing
+* Sharpening
+
+At least the required number of operations from this category will be implemented.
+
+## Edge Detection
+
+Located in:
+
+```text
+processing/edges.py
+```
+
+Possible operations include:
+
+* Sobel edge detection
+* Canny edge detection
+* Laplacian of Gaussian (LoG)
+
+At least the required number of edge-detection methods will be implemented.
+
+## Segmentation
+
+Located in:
+
+```text
+processing/segmentation.py
+```
+
+Possible operations include:
+
+* Global thresholding
+* Adaptive thresholding
+* Contour detection
+
+At least the required number of segmentation methods will be implemented.
+
+---
+
+# 4. Project Structure
 
 ```text
 ComputerVisionApp/
@@ -96,2113 +198,486 @@ ComputerVisionApp/
 └── README.md
 ```
 
----
-
-# 4. High-Level Architecture
-
-```text
-                    USER
-                     │
-                     ▼
-                    GUI
-                     │
-                     ▼
-                  app.py
-                /    |    \
-               /     |     \
-              ▼      ▼      ▼
-          File      Webcam   Processing
-          Core       Core
-               \     |     /
-                \    |    /
-                     ▼
-               current_image
-                     │
-                     ▼
-                    GUI
-```
-
-The GUI collects user input.
-
-`app.py` coordinates the application.
-
-Processing modules receive an image and parameters and return a processed image.
-
-The GUI then displays the returned result.
+The structure is intentionally kept small. Files are separated only where there is a clear responsibility.
 
 ---
 
-# 5. `main.py`
+# 5. File Responsibilities
 
-`main.py` is only the application entry point.
+## `main.py`
 
-Conceptually:
-
-```python
-import tkinter as tk
-from app import ComputerVisionApp
-
-root = tk.Tk()
-app = ComputerVisionApp(root)
-root.mainloop()
-```
+Application entry point.
 
 Responsibilities:
 
-```text
-Create Tkinter root
-        ↓
-Create application
-        ↓
-Start event loop
-```
+* Create the Tkinter root window
+* Create the application
+* Start the Tkinter event loop
 
-Nothing else should be placed here.
+This file should remain very small.
 
 ---
 
-# 6. `app.py`
+## `app.py`
 
-This contains the main application class:
-
-```python
-class ComputerVisionApp:
-    ...
-```
-
-It coordinates:
-
-* GUI
-* Application state
-* File handling
-* Webcam
-* Processing operations
-* Reset functionality
-* Apply functionality
-* Snapshot handling
-* Application cleanup
-
-Main state:
-
-```python
-self.original_image
-self.current_image
-self.operation_source
-
-self.current_operation
-
-self.webcam
-self.webcam_active
-self.current_frame
-```
-
-`app.py` should coordinate operations but should not contain all OpenCV algorithms.
-
----
-
-# 7. Image State
-
-We will maintain three important image variables.
-
-```python
-self.original_image
-self.current_image
-self.operation_source
-```
-
-### `original_image`
-
-The originally opened image or webcam snapshot.
-
-Used when the user selects:
-
-```text
-Reset Image
-```
-
-### `current_image`
-
-The current processed result.
-
-This is also the image saved using **Save As**.
-
-### `operation_source`
-
-A temporary copy used when interactively adjusting parameters.
-
-Example:
-
-```text
-Current Image
-      ↓
-Select Gaussian Blur
-      ↓
-operation_source = current_image.copy()
-      ↓
-Move sigma slider
-      ↓
-Always process operation_source
-```
-
-This prevents repeated slider movements from processing an already blurred image again and again.
-
----
-
-# 8. Main Application Flow
-
-```text
-Launch Application
-        │
-        ▼
-Empty GUI
-        │
-        ├───────────────┐
-        │               │
-        ▼               ▼
-Open Image          Open Webcam
-        │               │
-        │          Live Video
-        │               │
-        │         Take Snapshot
-        │               │
-        └───────┬───────┘
-                ▼
-          Static Image
-                │
-                ▼
-       Select Operation
-                │
-                ▼
-       Show Parameters
-                │
-                ▼
-      Adjust Parameters
-                │
-                ▼
-        Preview Result
-                │
-                ▼
-              Apply
-                │
-          ┌─────┴─────┐
-          ▼           ▼
-        Reset       Save As
-```
-
----
-
-# 9. Main GUI Layout
-
-The interface will remain simple.
-
-```text
-┌──────────────────────────────────────────────────────────┐
-│ File                       Tools                         │
-├──────────────────────────────────────────────────────────┤
-│                                                          │
-│                                                          │
-│                    IMAGE PREVIEW                         │
-│                                                          │
-│                                                          │
-├──────────────────────────────────────────────────────────┤
-│ Operation: Gaussian Smoothing                            │
-│                                                          │
-│ Kernel Size: [ 5 ]                                       │
-│ Sigma:       ─────────●────────                          │
-│                                                          │
-│ [Apply]       [Reset Image]       [Take Snapshot]        │
-├──────────────────────────────────────────────────────────┤
-│ Status: Image loaded                                     │
-└──────────────────────────────────────────────────────────┘
-```
-
-The assignment specifically requires menus, buttons, sliders/trackbars and numeric text input.
-
----
-
-# 10. File Menu
-
-```text
-File
-├── Open Image...
-├── Access Live Webcam
-├── Save As...
-├── Reset Image
-└── Exit
-```
-
-The assignment requires local image opening, webcam input and output saving.
-
----
-
-# 11. Tools Menu
-
-```text
-Tools
-├── Foundations & Color
-│   ├── Grayscale
-│   ├── Brightness / Contrast
-│   └── HSV Adjustment
-│
-├── Image Statistics
-│   ├── Histogram
-│   └── Histogram Equalization
-│
-├── Filters
-│   ├── Median Filter
-│   ├── Gaussian Smoothing
-│   └── Sharpening
-│
-├── Edge Detection
-│   ├── Sobel
-│   └── Canny
-│
-└── Segmentation
-    ├── Global Threshold
-    └── Adaptive Threshold
-```
-
-Optional later:
-
-```text
-Contour Detection
-```
-
----
-
-# 12. `gui/layout.py`
-
-Handles the main GUI layout.
-
-Functions can include:
-
-```text
-create_menu()
-create_layout()
-create_image_area()
-create_control_area()
-create_status_bar()
-display_image()
-update_status()
-```
+Main coordinator of the application.
 
 Responsibilities:
 
-* Create frames
-* Create menu
-* Create image preview area
-* Create parameter panel
-* Create action buttons
-* Display images
-* Update status text
+* Main application class
+* Maintain current application state
+* Maintain the currently loaded image
+* Maintain the currently displayed/processed image
+* Connect GUI actions with processing functions
+* Coordinate file handling
+* Coordinate webcam operations
+* Refresh the image preview
+* Handle application shutdown safely
 
-It should contain GUI code, not OpenCV algorithms.
-
----
-
-# 13. `gui/controls.py`
-
-Handles operation-specific controls.
-
-Functions can include:
-
-```text
-clear_controls()
-
-show_grayscale_controls()
-show_brightness_controls()
-show_hsv_controls()
-
-show_histogram_controls()
-
-show_median_controls()
-show_gaussian_controls()
-
-show_sobel_controls()
-show_canny_controls()
-
-show_global_threshold_controls()
-show_adaptive_threshold_controls()
-```
-
-Example:
-
-Selecting:
-
-```text
-Tools → Edge Detection → Canny
-```
-
-changes the parameter area into:
-
-```text
-Canny Edge Detection
-
-Threshold 1:
-0 ─────────●──────── 255
-
-Threshold 2:
-0 ─────────────●──── 255
-
-Aperture:
-[ 3 ▼ ]
-
-[Apply]
-```
+The main application logic belongs here.
 
 ---
 
-# 14. Image Display
+# 6. GUI
 
-Images may be larger than the application window.
+## `gui/layout.py`
 
-We will resize images **only for preview**.
-
-Example:
-
-```text
-Real processed image
-1920 × 1080
-      ↓
-Preview resize
-      ↓
-900 × 500
-```
-
-Saving still saves:
-
-```text
-1920 × 1080
-```
-
-We should never overwrite the real processed image with the resized preview.
-
----
-
-# 15. `core/file_handler.py`
-
-Functions:
-
-```text
-open_image()
-save_image()
-```
-
-Possible helper:
-
-```text
-is_supported_file()
-```
-
-Supported formats should include at least:
-
-```text
-JPG
-JPEG
-PNG
-BMP
-```
-
-as required by the assignment.
-
----
-
-# 16. Open Image Flow
-
-```text
-File → Open Image
-        ↓
-Tkinter file dialog
-        ↓
-cv2.imread()
-        ↓
-Return image
-        ↓
-original_image = image
-current_image = image.copy()
-        ↓
-Display image
-```
-
-If an invalid image is selected:
-
-```text
-Unable to open the selected image.
-```
-
-The application should not crash.
-
----
-
-# 17. Save Image Flow
-
-```text
-File → Save As
-        ↓
-Choose destination
-        ↓
-cv2.imwrite(current_image)
-```
-
-We save:
-
-```python
-self.current_image
-```
-
-not the original image.
-
-The assignment specifically requires saving the currently displayed processed image.
-
----
-
-# 18. Reset Image
-
-Reset remains simple:
-
-```python
-self.current_image = self.original_image.copy()
-```
-
-Flow:
-
-```text
-Processed Result
-      ↓
-Reset Image
-      ↓
-Original Image
-```
-
-No undo/redo system is required.
-
----
-
-# 19. `core/webcam.py`
-
-Handles webcam resources.
-
-Functions:
-
-```text
-start_webcam()
-read_frame()
-stop_webcam()
-is_webcam_available()
-```
-
-Basic OpenCV call:
-
-```python
-cv2.VideoCapture(0)
-```
-
-We will use Tkinter's:
-
-```python
-root.after(...)
-```
-
-for updating webcam frames instead of introducing unnecessary threading.
-
----
-
-# 20. Webcam Flow
-
-```text
-File
- ↓
-Access Live Webcam
- ↓
-start_webcam()
- ↓
-VideoCapture(0)
- ↓
-Read frame
- ↓
-Display frame
- ↓
-root.after(...)
- ↓
-Read next frame
-```
-
-The assignment requires live webcam input.
-
----
-
-# 21. Snapshot Flow
-
-```text
-Live Webcam
-      ↓
-Take Snapshot
-      ↓
-Copy current frame
-      ↓
-Stop webcam
-      ↓
-original_image = snapshot
-      ↓
-current_image = snapshot.copy()
-      ↓
-Display snapshot
-      ↓
-Static-image mode
-```
-
-The snapshot can then be processed exactly like a normal opened image.
-
----
-
-# 22. Webcam Cleanup
-
-When any of these happen:
-
-```text
-Take Snapshot
-Open Image
-Exit Program
-Close Window
-```
-
-the webcam must be released if active.
-
-Example:
-
-```python
-capture.release()
-```
-
-The assignment explicitly requires proper camera/resource cleanup.
-
----
-
-# 23. Processing Scope
-
-We will implement **12 primary operations**.
-
-This gives us more than the minimum of 10 while satisfying every category requirement.
-
-The assignment requires at least 10 total operations with minimum coverage across several categories.
-
----
-
-# 24. Final Operation List
-
-| #  | Category            | Operation              |
-| -- | ------------------- | ---------------------- |
-| 1  | Foundations & Color | Grayscale              |
-| 2  | Foundations & Color | Brightness / Contrast  |
-| 3  | Foundations & Color | HSV Adjustment         |
-| 4  | Statistics          | Histogram              |
-| 5  | Statistics          | Histogram Equalization |
-| 6  | Local Operators     | Median Filter          |
-| 7  | Local Operators     | Gaussian Smoothing     |
-| 8  | Local Operators     | Sharpening             |
-| 9  | Edge Detection      | Sobel                  |
-| 10 | Edge Detection      | Canny                  |
-| 11 | Segmentation        | Global Threshold       |
-| 12 | Segmentation        | Adaptive Threshold     |
-
-Optional:
-
-```text
-13. Contour Detection
-```
-
----
-
-# 25. `processing/color.py`
-
-Functions:
-
-```python
-grayscale(image)
-
-brightness_contrast(
-    image,
-    brightness,
-    contrast
-)
-
-adjust_hsv(
-    image,
-    hue,
-    saturation,
-    value
-)
-```
-
-The assignment requires at least two operations from the foundations/color group; we will implement three.
-
----
-
-# 26. Grayscale
-
-Function:
-
-```python
-grayscale(image)
-```
-
-Uses:
-
-```python
-cv2.cvtColor(...)
-```
-
-Flow:
-
-```text
-BGR Image
-    ↓
-Grayscale conversion
-    ↓
-Single-channel image
-```
-
-No parameters required.
-
----
-
-# 27. Brightness / Contrast
-
-Function:
-
-```python
-brightness_contrast(
-    image,
-    brightness,
-    contrast
-)
-```
-
-Controls:
-
-```text
-Brightness:
--100 ───────── 0 ───────── +100
-
-Contrast:
-0.5 ───────── 1.0 ───────── 3.0
-```
-
-Both will use sliders.
-
-This is also useful for demonstrating real-time parameter adjustment.
-
----
-
-# 28. HSV Adjustment
-
-Function:
-
-```python
-adjust_hsv(
-    image,
-    hue,
-    saturation,
-    value
-)
-```
-
-Controls:
-
-```text
-Hue
-────────●────────
-
-Saturation
-────────●────────
-
-Value
-────────●────────
-```
-
-Flow:
-
-```text
-BGR
- ↓
-HSV
- ↓
-Adjust H/S/V
- ↓
-Validate ranges
- ↓
-HSV → BGR
-```
-
----
-
-# 29. `processing/statistics.py`
-
-Functions:
-
-```python
-histogram(image, channel)
-
-histogram_equalization(image)
-```
-
-Both are mandatory according to the assignment.
-
----
-
-# 30. Histogram
-
-Instead of introducing Matplotlib, we can keep the implementation based on OpenCV.
-
-Flow:
-
-```text
-Image
- ↓
-cv2.calcHist()
- ↓
-Normalize histogram
- ↓
-Create blank OpenCV image
- ↓
-Draw graph using cv2.line()
- ↓
-Display histogram
-```
-
-Control:
-
-```text
-Channel:
-[ Grayscale ▼ ]
-```
-
-Possible values:
-
-```text
-Grayscale
-Blue
-Green
-Red
-```
-
----
-
-# 31. Histogram Equalization
-
-Function:
-
-```python
-histogram_equalization(image)
-```
-
-Simple flow:
-
-```text
-Image
- ↓
-Convert to grayscale
- ↓
-cv2.equalizeHist()
- ↓
-Improved-contrast image
-```
-
-No parameters required.
-
----
-
-# 32. `processing/filters.py`
-
-Functions:
-
-```python
-median_filter(
-    image,
-    kernel_size
-)
-
-gaussian_blur(
-    image,
-    kernel_size,
-    sigma
-)
-
-sharpen(image)
-```
-
-We only need two from this category, but we implement three.
-
----
-
-# 33. Median Filter
-
-Function:
-
-```python
-median_filter(image, kernel_size)
-```
-
-Control:
-
-```text
-Kernel Size:
-[ 5 ]
-
-[Apply]
-```
-
-Validation:
-
-```text
-Must be integer
-Must be positive
-Must be odd
-```
+Responsible for the main GUI structure.
 
 Examples:
 
-```text
-3 ✓
-5 ✓
-7 ✓
+* Main window layout
+* Menu bar
+* File menu
+* Tools menu
+* Image display area
+* Control panel placement
 
-4 ✗
-0 ✗
--1 ✗
-abc ✗
-```
+It should focus on **where GUI elements appear**, rather than implementing image-processing algorithms.
 
-This also satisfies the requirement for validated numeric textbox input.
+## `gui/controls.py`
 
----
+Responsible for interactive controls.
 
-# 34. Gaussian Smoothing
+Examples:
 
-Function:
+* Buttons
+* Sliders
+* Trackbars
+* Parameter text boxes
+* Apply buttons
+* Snapshot button
 
-```python
-gaussian_blur(
-    image,
-    kernel_size,
-    sigma
-)
-```
-
-Controls:
-
-```text
-Kernel Size:
-[ 5 ]
-
-Sigma:
-0 ───────●──────── 10
-
-[Apply]
-```
-
-The assignment specifically expects Gaussian smoothing to expose kernel size and sigma.
+Processing algorithms should not be implemented directly inside GUI controls.
 
 ---
 
-# 35. Sharpening
+# 7. Core Functionality
 
-Function:
+## `core/file_handler.py`
 
-```python
-sharpen(image)
-```
+Responsible for image file operations.
 
-Use a simple sharpening kernel such as:
+Examples:
 
-```text
- 0  -1   0
--1   5  -1
- 0  -1   0
-```
+* Open image
+* Validate selected file
+* Load image using OpenCV
+* Save processed image
+* Handle cancelled file dialogs
+* Handle unsupported or unreadable files
 
-and process using:
+## `core/webcam.py`
 
-```python
-cv2.filter2D()
-```
+Responsible for webcam functionality.
 
-No parameter is required.
+Examples:
 
----
+* Open webcam
+* Check webcam availability
+* Read frames
+* Stop webcam
+* Release camera resources
+* Support snapshot capture
 
-# 36. `processing/edges.py`
-
-Functions:
-
-```python
-sobel(
-    image,
-    kernel_size,
-    threshold_ratio
-)
-
-canny(
-    image,
-    threshold1,
-    threshold2,
-    aperture_size
-)
-```
-
-The assignment requires at least two edge-detection methods.
+Camera resources must always be released correctly when they are no longer required.
 
 ---
 
-# 37. Sobel
+# 8. Processing
 
-Controls:
+The `processing/` package contains the actual computer-vision algorithms.
 
-```text
-Kernel Size:
-[ 3 ▼ ]
-
-Threshold Ratio:
-0.1 ─────────●──────── 3.0
-
-[Apply]
-```
-
-Flow:
-
-```text
-Image
- ↓
-Grayscale
- ↓
-Sobel X
- ↓
-Sobel Y
- ↓
-Gradient magnitude
- ↓
-Calculate mean gradient
- ↓
-Threshold = mean × ratio
- ↓
-Edge image
-```
-
-This follows the assignment requirement for kernel size and threshold based on a ratio of the mean.
-
----
-
-# 38. Canny
-
-Function:
+Processing functions should generally follow a simple pattern:
 
 ```python
-canny(
-    image,
-    threshold1,
-    threshold2,
-    aperture_size
-)
+def operation(image, parameter):
+    # process image
+    return processed_image
 ```
 
-Controls:
-
-```text
-Threshold 1
-0 ─────────●──────── 255
-
-Threshold 2
-0 ─────────────●──── 255
-
-Aperture:
-[ 3 ▼ ]
-
-[Apply]
-```
-
-Allowed aperture values:
-
-```text
-3
-5
-7
-```
-
-The assignment specifically mentions these controls for Canny.
-
----
-
-# 39. `processing/segmentation.py`
-
-Functions:
+For example:
 
 ```python
-global_threshold(
-    image,
-    threshold
-)
-
-adaptive_threshold(
-    image,
-    block_size,
-    c_value,
-    method
-)
-```
-
-Optional:
-
-```python
-detect_contours(...)
-```
-
-We need at least two segmentation operations.
-
----
-
-# 40. Global Thresholding
-
-Function:
-
-```python
-global_threshold(image, threshold)
-```
-
-Control:
-
-```text
-Threshold:
-0 ─────────●──────── 255
-
-[Apply]
-```
-
-Flow:
-
-```text
-Image
- ↓
-Grayscale
- ↓
-cv2.threshold()
- ↓
-Binary image
-```
-
----
-
-# 41. Adaptive Thresholding
-
-Function:
-
-```python
-adaptive_threshold(
-    image,
-    block_size,
-    c_value,
-    method
-)
-```
-
-Controls:
-
-```text
-Block Size:
-[ 11 ]
-
-Method:
-[ Gaussian ▼ ]
-
-C:
--20 ───────●────── +20
-
-[Apply]
-```
-
-Methods:
-
-```text
-Mean
-Gaussian
-```
-
-Validation:
-
-```text
-Block size must:
-be integer
-be greater than 1
-be odd
-```
-
----
-
-# 42. Optional Contour Detection
-
-Only implement after all required operations work correctly.
-
-Function:
-
-```python
-detect_contours(
-    image,
-    threshold
-)
-```
-
-Flow:
-
-```text
-Image
- ↓
-Grayscale
- ↓
-Threshold
- ↓
-cv2.findContours()
- ↓
-cv2.drawContours()
- ↓
-Result
-```
-
-Contour detection is also listed as an available segmentation method in the assignment.
-
----
-
-# 43. Dynamic Parameter Panel
-
-Instead of building a separate screen for each operation, we will reuse one parameter panel.
-
-Example:
-
-Selecting Gaussian Blur shows:
-
-```text
-Gaussian Smoothing
-
-Kernel Size:
-[ 5 ]
-
-Sigma:
-────────●────────
-
-[Apply]
-```
-
-Selecting Canny replaces those controls with:
-
-```text
-Canny Edge Detection
-
-Threshold 1:
-────────●────────
-
-Threshold 2:
-────────●────────
-
-Aperture:
-[3 ▼]
-
-[Apply]
-```
-
-Implementation remains straightforward:
-
-```python
-def clear_controls():
+def gaussian_blur(image, kernel_size, sigma):
     ...
-
-def show_gaussian_controls():
-    ...
-
-def show_canny_controls():
-    ...
+    return result
 ```
+
+Processing functions should remain:
+
+* Small
+* Readable
+* Easy to test
+* Easy to explain
+* Independent from Tkinter where possible
+
+A processing function should normally receive an image and parameters and return a result.
 
 ---
 
-# 44. Live Parameter Preview
+# 9. Validation
 
-Slider operations should update the preview interactively where practical.
+## `utils/validators.py`
 
-Flow:
+Contains reusable validation for operation parameters.
 
-```text
-Move slider
-      ↓
-Callback
-      ↓
-Process operation_source
-      ↓
-Display preview
-```
+Examples:
 
-Good candidates:
+* Validate kernel size
+* Ensure kernel size is odd
+* Validate threshold range
+* Validate numeric textbox input
+* Validate positive values
+* Apply safe defaults when appropriate
 
-```text
-Brightness
-Contrast
-Hue
-Saturation
-Value
-Gaussian Sigma
-Sobel Ratio
-Canny T1
-Canny T2
-Global Threshold
-Adaptive Threshold C
-```
-
-Textbox parameters can update after pressing **Apply**.
-
-This keeps the implementation simple while satisfying the requirement for interactive parameter adjustment.
+Validation should happen before potentially unsafe OpenCV operations are executed.
 
 ---
 
-# 45. Apply Behavior
+# 10. Critical Rule — The Application Must Not Crash
 
-Operation flow:
+Application stability is an important requirement.
 
-```text
-Select operation
-      ↓
-operation_source = current_image.copy()
-      ↓
-Adjust parameters
-      ↓
-Preview from operation_source
-      ↓
-Apply
-      ↓
-current_image = preview_result
-```
+Expected user mistakes and common runtime problems must be handled safely.
 
-This allows simple sequential processing.
+For example:
 
-Example:
+### No Image Loaded
+
+If the user selects an operation before opening an image:
 
 ```text
-Original
- ↓
-Brightness
- ↓ Apply
-Brighter Image
- ↓
-Gaussian Blur
- ↓ Apply
-Blurred Brighter Image
- ↓
-Canny
- ↓ Apply
-Final Result
+Please load an image before applying this operation.
 ```
 
-We do not need a sophisticated processing pipeline.
+The application should continue running.
 
----
+### Invalid Numeric Input
 
-# 46. `utils/validators.py`
-
-Functions can include:
-
-```python
-validate_integer()
-validate_float()
-validate_range()
-validate_odd_kernel()
-```
-
-Example behavior:
+If a textbox expects an integer but receives:
 
 ```text
-Valid:
-3
-5
-7
+abc
+```
 
-Invalid:
+the application should display an understandable message or use an appropriate safe default.
+
+It must not terminate because of a `ValueError`.
+
+### Invalid Kernel Size
+
+Operations such as Median or Gaussian filtering require valid kernel sizes.
+
+Values such as:
+
+```text
 -1
 0
 4
 abc
 ```
 
-The assignment says invalid parameters should not crash the application and defaults may be used when appropriate.
+must be validated before calling OpenCV.
+
+Depending on the operation, the application can:
+
+* Inform the user about the valid value, or
+* Replace an out-of-range value with an appropriate safe default
+
+### Webcam Failure
+
+If the webcam:
+
+* Does not exist
+* Cannot be opened
+* Does not have permission
+* Stops returning frames
+
+the application should show an error message and remain usable.
+
+### Invalid Image
+
+If OpenCV cannot load the selected file, the application should inform the user instead of attempting to process an invalid image.
+
+### Cancelled Dialogs
+
+Cancelling:
+
+* Open
+* Save As
+
+is a normal action and should simply return to the application.
 
 ---
 
-# 47. Error Handling
+# 11. Error-Handling Philosophy
 
-Use simple Tkinter dialogs:
+Error handling should be **simple rather than overengineered**.
+
+We do not need a complicated logging or exception framework.
+
+The general flow should be:
+
+```text
+User Action
+    ↓
+Check required image/state
+    ↓
+Validate parameters
+    ↓
+Perform operation
+    ↓
+Display result
+```
+
+If something is invalid:
+
+```text
+Invalid Input
+    ↓
+Show useful message / apply safe default
+    ↓
+Return safely
+    ↓
+Application continues running
+```
+
+Expected user errors should never close the application.
+
+---
+
+# 12. Coding Guidelines
+
+Because this is an academic project, readability is more important than clever abstractions.
+
+Prefer:
 
 ```python
-messagebox.showwarning(...)
-messagebox.showerror(...)
-messagebox.showinfo(...)
+def grayscale(image):
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 ```
 
-Examples:
+over unnecessarily complex class hierarchies or generic processing systems.
 
-```text
-Please load an image before applying this operation.
+General rules:
 
-Kernel size must be a positive odd number.
+* Keep functions focused
+* Use meaningful names
+* Add comments where the logic may not be obvious
+* Avoid duplicated code where practical
+* Validate parameters before OpenCV calls
+* Keep processing separate from GUI code
+* Release webcam resources correctly
+* Avoid unnecessary dependencies
+* Avoid unnecessary folders/classes/design patterns
 
-Please enter a valid numeric value.
-
-Unable to access webcam.
-
-There is no image to save.
-
-Unable to open the selected image.
-```
-
-We do not need custom exception classes.
+Every part of the implementation should be understandable and explainable during the technical evaluation.
 
 ---
 
-# 48. Edge Cases We Must Handle
+# 13. Development Approach
+
+Development should happen incrementally.
+
+A suitable sequence is:
 
 ```text
-No image loaded
-
-Invalid image file
-
-No webcam available
-
-Save attempted without image
-
-Operation selected without image
-
-Empty textbox
-
-Non-numeric textbox
-
-Negative kernel
-
-Even kernel when odd is required
-
-Invalid threshold
-
-Invalid aperture
-
-Close application while webcam is running
+Basic application window
+        ↓
+Image opening/display
+        ↓
+Image saving
+        ↓
+Basic processing
+        ↓
+Interactive controls
+        ↓
+Required processing operations
+        ↓
+Webcam
+        ↓
+Snapshot
+        ↓
+Validation/error handling
+        ↓
+Integration testing
+        ↓
+Documentation
+        ↓
+Demo
 ```
 
-The application should show a useful message rather than crash.
+Features should be tested as they are added instead of implementing everything first and testing only at the end.
 
 ---
 
-# 49. Development Milestones
+# 14. Testing Priorities
 
-## Milestone 1 — Project Skeleton
+Testing should focus heavily on preventing crashes.
 
-Create:
+Important cases include:
+
+* Start application normally
+* Close application normally
+* Open valid JPG
+* Open valid PNG
+* Open valid BMP
+* Cancel Open dialog
+* Attempt to open invalid file
+* Apply operation without image
+* Apply each implemented operation
+* Test minimum parameter values
+* Test maximum parameter values
+* Test invalid parameter values
+* Test even/odd kernel constraints
+* Test non-numeric textbox values
+* Start webcam
+* Take snapshot
+* Stop webcam
+* Handle unavailable webcam
+* Save processed image
+* Cancel Save As
+* Exit while webcam is running
+
+The expected outcome is always either:
 
 ```text
-ComputerVisionApp/
-├── main.py
-├── app.py
-├── gui/
-├── core/
-├── processing/
-└── utils/
+Successful operation
 ```
 
-Goal:
+or:
 
 ```text
+Useful user feedback + application continues running
+```
+
+Never an application crash.
+
+---
+
+# 15. Running the Application
+
+Create a Python environment and install the required dependencies.
+
+Example:
+
+```bash
+pip install opencv-python numpy
+```
+
+Tkinter is normally included with standard Python installations, but its availability depends on the operating system and Python installation.
+
+Run the application from the project directory:
+
+```bash
 python main.py
 ```
 
-opens the application successfully.
+Webcam access requires the operating system to grant camera permission to Python/Terminal.
 
 ---
 
-# 50. Milestone 2 — Basic GUI
+# 16. Academic Requirements
 
-Implement:
+This is an individual academic assignment.
 
-```text
-Main Window
-File Menu
-Tools Menu
-Image Preview Area
-Parameter Panel
-Apply Button
-Reset Button
-Snapshot Button
-Status Bar
-```
+AI tools may be used to assist development and debugging, but the final code must be understood by the student.
 
-No processing yet.
+The student should be able to explain:
 
----
+* Project structure
+* GUI event handling
+* Image representation
+* OpenCV operations
+* Parameters
+* Validation
+* Webcam lifecycle
+* How each implemented computer-vision operation works
+* Why particular parameter ranges were selected
 
-# 51. Milestone 3 — Image I/O
-
-Implement:
-
-```text
-Open JPG
-Open JPEG
-Open PNG
-Open BMP
-Display Image
-Reset Image
-Save Processed Image
-```
-
-Test completely before moving on.
+Code should therefore remain straightforward and defensible.
 
 ---
 
-# 52. Milestone 4 — Webcam
+# 17. Submission
 
-Implement:
+The assignment documentation is an important part of the final submission.
 
-```text
-Start Webcam
-Display Live Feed
-Take Snapshot
-Stop Webcam
-Release Camera
-```
+## PDF Documentation
 
-At this stage all major input/output requirements are covered.
+The PDF should be approximately **3–6 pages** and include:
 
----
+* Overview of the tool
+* List of implemented functionalities
+* A subsection for each implemented operation
+* Parameter table
+* Valid parameter ranges
+* Explanation of parameter effects
+* GUI screenshots
+* Demo video link
 
-# 53. Milestone 5 — Color Operations
+## Python Script
 
-Implement:
+The application source code must launch the GUI and support:
 
-```text
-Grayscale
-Brightness / Contrast
-HSV Adjustment
-```
+* Image mode
+* Webcam mode
+* Interactive processing
+* Output saving
 
-Also establish the pattern for dynamic controls and live preview.
+## Demo Video
 
----
+The demonstration should be approximately **2–4 minutes**.
 
-# 54. Milestone 6 — Statistics
+It should demonstrate:
 
-Implement:
+* Opening an image
+* At least four processing operations
+* Live parameter adjustment
+* Webcam access
+* Taking a snapshot
+* Saving the processed result
 
-```text
-Histogram
-Histogram Equalization
-```
-
-These are mandatory.
-
----
-
-# 55. Milestone 7 — Filters
-
-Implement:
-
-```text
-Median Filter
-Gaussian Smoothing
-Sharpening
-```
-
-Add kernel validation.
+The video link should be included near the beginning of the PDF.
 
 ---
 
-# 56. Milestone 8 — Edge Detection
+# 18. Project Goal
 
-Implement:
+The goal is not to create a commercial image-editing application.
 
-```text
-Sobel
-Canny
-```
+The goal is to demonstrate understanding of:
 
-Make sure required parameters are exposed instead of hardcoding them.
+* OpenCV
+* Image-processing concepts
+* Computer-vision operations
+* Tkinter GUI programming
+* Interactive parameter control
+* Input validation
+* Webcam handling
+* Safe application behavior
 
----
+The final application should therefore be:
 
-# 57. Milestone 9 — Segmentation
-
-Implement:
-
-```text
-Global Threshold
-Adaptive Threshold
-```
-
-At this point all required operation categories are complete.
-
----
-
-# 58. Milestone 10 — Validation and Error Handling
-
-Test:
-
-```text
-No image
-Invalid image
-No webcam
-Invalid kernel
-Negative kernel
-Even kernel
-Empty textbox
-Text instead of number
-Save without image
-Exit during webcam
-```
-
----
-
-# 59. Milestone 11 — Optional Contours
-
-Only implement if all mandatory functionality is stable.
-
----
-
-# 60. Milestone 12 — UI Cleanup
-
-Only simple improvements:
-
-```text
-Better spacing
-Meaningful labels
-Aligned buttons
-Readable parameter controls
-Window title
-Status messages
-Appropriate preview size
-```
-
-Do not spend time building sophisticated styling.
-
----
-
-# 61. Milestone 13 — Full Testing
-
-### File Handling
-
-```text
-□ JPG opens
-□ JPEG opens
-□ PNG opens
-□ BMP opens
-□ Image displays
-□ Save works
-□ Reset works
-```
-
-### Webcam
-
-```text
-□ Webcam opens
-□ Live feed displays
-□ Snapshot works
-□ Webcam stops correctly
-□ Webcam releases on exit
-```
-
-### Operations
-
-```text
-□ Grayscale
-□ Brightness / Contrast
-□ HSV Adjustment
-
-□ Histogram
-□ Histogram Equalization
-
-□ Median Filter
-□ Gaussian Smoothing
-□ Sharpening
-
-□ Sobel
-□ Canny
-
-□ Global Threshold
-□ Adaptive Threshold
-```
-
-### Parameters
-
-```text
-□ Sliders work
-□ Numeric text input works
-□ Invalid numeric input handled
-□ Kernel validation works
-□ Range validation works
-```
-
-### Stability
-
-```text
-□ No-image operations don't crash
-□ Save without image doesn't crash
-□ Webcam failure doesn't crash
-□ Window closes cleanly
-```
-
----
-
-# 62. Optional Bonus Features
-
-The assignment mentions:
-
-```text
-Side-by-side original vs processed view
-Preset buttons
-Keyboard shortcuts
-```
-
-as possible bonus features.
-
-We should not implement these until all mandatory features are complete.
-
-If we add only one bonus, the best option is:
-
-```text
-Original                 Processed
-┌─────────────┐          ┌─────────────┐
-│             │          │             │
-│    IMAGE    │          │    RESULT   │
-│             │          │             │
-└─────────────┘          └─────────────┘
-```
-
-This provides useful visual value without adding much complexity.
-
----
-
-# 63. Documentation Plan
-
-The assignment requires a **3–6 page PDF**.
-
-Recommended structure:
-
-## Page 1
-
-```text
-Title
-Student Information
-Video Link
-Tool Overview
-Main Features
-```
-
-## Page 2
-
-```text
-GUI Overview
-Opening Images
-Saving Images
-Webcam
-Snapshot
-GUI Screenshot
-```
-
-## Page 3
-
-```text
-Foundations & Color
-Statistics
-
-Grayscale
-Brightness / Contrast
-HSV
-Histogram
-Histogram Equalization
-```
-
-## Page 4
-
-```text
-Filters
-Edge Detection
-Segmentation
-
-Median
-Gaussian
-Sharpening
-Sobel
-Canny
-Global Threshold
-Adaptive Threshold
-```
-
-## Page 5
-
-```text
-Parameter Table
-Screenshots
-Conclusion
-```
-
----
-
-# 64. Parameter Table
-
-Maintain this table while developing.
-
-| Operation        | Parameter  | Input Type | Example Range     | Purpose               |
-| ---------------- | ---------- | ---------- | ----------------- | --------------------- |
-| Brightness       | Brightness | Slider     | -100 to 100       | Lighten/darken        |
-| Contrast         | Contrast   | Slider     | 0.5 to 3          | Contrast strength     |
-| HSV              | Hue        | Slider     | Defined range     | Hue adjustment        |
-| HSV              | Saturation | Slider     | Defined range     | Color strength        |
-| HSV              | Value      | Slider     | Defined range     | Brightness/value      |
-| Median           | Kernel     | Textbox    | Odd 3–31          | Noise reduction       |
-| Gaussian         | Kernel     | Textbox    | Odd 3–31          | Blur neighborhood     |
-| Gaussian         | Sigma      | Slider     | 0–10              | Blur strength         |
-| Sobel            | Kernel     | Menu       | 3/5/7             | Gradient neighborhood |
-| Sobel            | Ratio      | Slider     | 0.1–3             | Edge threshold        |
-| Canny            | T1         | Slider     | 0–255             | Lower threshold       |
-| Canny            | T2         | Slider     | 0–255             | Upper threshold       |
-| Canny            | Aperture   | Menu       | 3/5/7             | Sobel aperture        |
-| Global Threshold | Threshold  | Slider     | 0–255             | Binary split          |
-| Adaptive         | Block Size | Textbox    | Odd ≥3            | Local neighborhood    |
-| Adaptive         | Method     | Menu       | Mean/Gaussian     | Threshold method      |
-| Adaptive         | C          | Slider     | Approx. -20 to 20 | Threshold offset      |
-
-Exact ranges can be finalized during implementation.
-
----
-
-# 65. Demo Video Plan
-
-The video must be **2–4 minutes** and include a link in the PDF.
-
-Recommended flow:
-
-### Start
-
-```text
-Launch application
-```
-
-### Open image
-
-```text
-File → Open Image
-```
-
-### Demonstrate at least four operations
-
-Recommended:
-
-```text
-Brightness / Contrast
-Gaussian Blur
-Canny
-Adaptive Threshold
-```
-
-Change parameters interactively.
-
-### Webcam
-
-```text
-File → Access Live Webcam
-```
-
-Show live feed.
-
-### Snapshot
-
-```text
-Take Snapshot
-```
-
-### Process snapshot
-
-Apply one operation.
-
-### Save
-
-```text
-File → Save As
-```
-
-Done.
-
-There is no need to demonstrate all 12 operations in the video because the assignment explicitly asks for at least four.
-
----
-
-# 66. Good Practices We Will Follow
-
-```text
-✓ Separate modules by responsibility
-
-✓ Small and clear functions
-
-✓ One clear application entry point
-
-✓ Avoid global variables
-
-✓ Keep state inside ComputerVisionApp
-
-✓ Keep GUI logic separate from processing logic
-
-✓ Processing functions receive images and return results
-
-✓ Keep original and processed images separate
-
-✓ Validate user input
-
-✓ Reuse simple validation helpers
-
-✓ Release webcam resources properly
-
-✓ Show useful error messages
-
-✓ Use meaningful names
-
-✓ Add comments only for non-obvious logic
-
-✓ Keep architecture understandable
-
-✓ Avoid unnecessary complexity
-```
-
----
-
-# 67. Practices We Deliberately Avoid
-
-```text
-✗ Complex MVC architecture
-✗ Service layer for every function
-✗ Repository pattern
-✗ Dependency injection
-✗ Interfaces / abstract classes
-✗ Factory patterns
-✗ Plugin architecture
-✗ Database
-✗ REST API
-✗ Authentication
-✗ Docker
-✗ Cloud integration
-✗ Complex threading
-✗ Production deployment system
-✗ Undo/redo framework
-✗ Image-history database
-✗ Advanced UI design system
-```
-
-These would increase complexity without helping satisfy the assignment.
-
----
-
-# 68. Final Detailed Folder Structure
-
-```text
-ComputerVisionApp/
-│
-├── main.py
-│   └── Start Tkinter application
-│
-├── app.py
-│   └── ComputerVisionApp
-│       ├── application state
-│       ├── select operation
-│       ├── interactive preview
-│       ├── apply result
-│       ├── reset image
-│       ├── take snapshot
-│       ├── coordinate modules
-│       └── clean application exit
-│
-├── gui/
-│   │
-│   ├── __init__.py
-│   │
-│   ├── layout.py
-│   │   ├── create_menu()
-│   │   ├── create_layout()
-│   │   ├── create_image_area()
-│   │   ├── create_control_area()
-│   │   ├── create_status_bar()
-│   │   ├── display_image()
-│   │   └── update_status()
-│   │
-│   └── controls.py
-│       ├── clear_controls()
-│       ├── show_grayscale_controls()
-│       ├── show_brightness_controls()
-│       ├── show_hsv_controls()
-│       ├── show_histogram_controls()
-│       ├── show_median_controls()
-│       ├── show_gaussian_controls()
-│       ├── show_sobel_controls()
-│       ├── show_canny_controls()
-│       ├── show_global_threshold_controls()
-│       └── show_adaptive_threshold_controls()
-│
-├── core/
-│   │
-│   ├── __init__.py
-│   │
-│   ├── file_handler.py
-│   │   ├── open_image()
-│   │   └── save_image()
-│   │
-│   └── webcam.py
-│       ├── start_webcam()
-│       ├── read_frame()
-│       ├── stop_webcam()
-│       └── is_webcam_available()
-│
-├── processing/
-│   │
-│   ├── __init__.py
-│   │
-│   ├── color.py
-│   │   ├── grayscale()
-│   │   ├── brightness_contrast()
-│   │   └── adjust_hsv()
-│   │
-│   ├── statistics.py
-│   │   ├── histogram()
-│   │   └── histogram_equalization()
-│   │
-│   ├── filters.py
-│   │   ├── median_filter()
-│   │   ├── gaussian_blur()
-│   │   └── sharpen()
-│   │
-│   ├── edges.py
-│   │   ├── sobel()
-│   │   └── canny()
-│   │
-│   └── segmentation.py
-│       ├── global_threshold()
-│       ├── adaptive_threshold()
-│       └── detect_contours()     # Optional
-│
-├── utils/
-│   │
-│   ├── __init__.py
-│   │
-│   └── validators.py
-│       ├── validate_integer()
-│       ├── validate_float()
-│       ├── validate_range()
-│       └── validate_odd_kernel()
-│
-└── README.md
-```
-
----
-
-# 69. Final Definition of Done
-
-The project is complete when:
-
-```text
-✓ Runs locally using python main.py
-
-✓ Uses Python
-
-✓ Uses OpenCV + Tkinter
-
-✓ Opens JPG/JPEG
-
-✓ Opens PNG
-
-✓ Opens BMP
-
-✓ Displays images
-
-✓ Opens webcam
-
-✓ Displays live webcam feed
-
-✓ Takes webcam snapshot
-
-✓ Switches snapshot to static-image mode
-
-✓ Saves processed output
-
-✓ Resets image
-
-✓ Has File menu
-
-✓ Has Tools menu
-
-✓ Uses buttons
-
-✓ Uses sliders
-
-✓ Uses validated numeric textbox input
-
-✓ Implements at least 10 operations
-
-✓ Implements our planned 12 operations
-
-✓ Meets all category minimums
-
-✓ Histogram works
-
-✓ Histogram Equalization works
-
-✓ Median Filter works
-
-✓ Gaussian Smoothing works
-
-✓ Sobel required parameters work
-
-✓ Canny required parameters work
-
-✓ Global Threshold works
-
-✓ Adaptive Threshold works
-
-✓ Invalid input does not crash application
-
-✓ No-image operation does not crash application
-
-✓ Webcam resources release properly
-
-✓ Code is separated into understandable modules
-
-✓ Code is understandable enough to explain in interview
-
-✓ PDF is 3–6 pages
-
-✓ PDF contains overview
-
-✓ PDF contains functionality descriptions
-
-✓ PDF contains parameter table
-
-✓ PDF contains screenshots
-
-✓ PDF contains video link
-
-✓ Demo video is 2–4 minutes
-
-✓ Video shows at least four operations
-
-✓ Video shows live parameter adjustment
-
-✓ Video shows webcam
-
-✓ Video shows snapshot
-
-✓ Video shows saving output
-```
-
----
-
-# 70. Final Locked Scope
-
-The final development direction is:
-
-> Build a simple but well-structured Python desktop Computer Vision application using OpenCV and Tkinter. The project will use separate GUI, core, processing, and utility modules; one central `ComputerVisionApp` class; 12 primary computer-vision operations; dynamic operation controls; interactive preview where appropriate; image and webcam modes; snapshot support; validation; graceful error handling; proper webcam cleanup; and processed-image saving. More advanced architecture and bonus features will only be considered after every mandatory assignment requirement is complete.
-
-This structure keeps the implementation clean and demonstrates good development practices without turning the assignment into unnecessarily sophisticated production software.
+**Simple, structured, stable, understandable, and complete enough to satisfy the assignment requirements.**
