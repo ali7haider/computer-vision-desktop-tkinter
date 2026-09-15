@@ -6,11 +6,11 @@ from tkinter import ttk
 from gui.controls import create_controls
 
 
-def create_layout(root, on_exit):
+def create_layout(root, on_exit, on_open, on_save):
     menu_bar = tk.Menu(root)
     file_menu = tk.Menu(menu_bar, tearoff=False)
-    file_menu.add_command(label="Open...", state="disabled")
-    file_menu.add_command(label="Save As...", state="disabled")
+    file_menu.add_command(label="Open...", command=on_open)
+    file_menu.add_command(label="Save As...", command=on_save)
     file_menu.add_command(label="Access Live Webcam", state="disabled")
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=on_exit)
@@ -37,6 +37,8 @@ def create_layout(root, on_exit):
     preview.grid(row=0, column=1, sticky="nsew")
     preview.rowconfigure(0, weight=1)
     preview.columnconfigure(0, weight=1)
-    ttk.Label(preview, text="No image loaded.", anchor="center").grid(
-        row=0, column=0, sticky="nsew"
+    canvas = tk.Canvas(
+        preview, background="#FFFFFF", highlightthickness=0, width=1, height=1
     )
+    canvas.grid(row=0, column=0, sticky="nsew")
+    return canvas

@@ -578,12 +578,13 @@ Never an application crash.
 
 # 15. Running the Application
 
-Create a Python environment and install the required dependencies.
-
-Example:
+Use a Python installation with Tkinter support, then create a virtual environment
+and install the required dependencies:
 
 ```bash
-pip install opencv-python numpy
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
 Tkinter is normally included with standard Python installations, but its availability depends on the operating system and Python installation.
@@ -593,6 +594,39 @@ Run the application from the project directory:
 ```bash
 python main.py
 ```
+
+On Windows, activate the environment with `.venv\Scripts\activate` instead.
+
+On macOS, File and Tools appear in the system menu bar at the top of the screen
+when the application is active.
+
+## M2 Manual Verification
+
+M2 is complete: automated checks passed and the user confirmed manual verification.
+Keep this checklist for regression checks after future changes.
+
+The current implementation supports image opening, preview, and saving.
+Processing and webcam controls remain disabled until their milestones.
+
+1. Launch the app and select **File → Save As...** before opening an image.
+   Expect a warning, with the app staying open.
+2. Select **File → Open...**, then cancel. The empty preview should remain.
+3. Open a JPG, PNG, and BMP in turn. Each should appear with correct colors
+   and proportions. Also try a filename containing spaces or accented characters.
+4. Resize the window with a large image loaded. The preview should fit without
+   stretching or cropping; the original image resolution is preserved.
+5. Save using **File → Save As...** to new `.png`, `.jpg`, and `.bmp` files.
+   Reopen them and check their appearance and full pixel dimensions. JPEG is
+   lossy, so small pixel differences are expected.
+6. Cancel Open and Save As with an image loaded. The displayed image should stay
+   unchanged, and cancelling Save As should create no file.
+7. Try opening a text file using **All files**, an empty `.png`, and a text file
+   renamed to `.jpg`. Expect an error and the previous image to remain visible.
+8. Try saving with an unsupported extension (such as `.xyz`) or to a folder
+   without write permission. Either the native dialog rejects the destination
+   or the app shows an error; the image should remain usable.
+9. Open and save another valid image after an error. Repeat several times,
+   then close via **File → Exit**. Relaunch and test the window close button.
 
 Webcam access requires the operating system to grant camera permission to Python/Terminal.
 
