@@ -1,14 +1,14 @@
 # Code Documentation
 
 This guide explains how the verified application works, so the student can trace
-the code and explain it during evaluation. It covers **M1 and M2**:
+the code and explain it during evaluation. It covers **M1, M2, and M3**:
 
 * M1 foundation: commit `3b953a0`.
 * M2 image loading, preview, and saving: commit `b0c57a2`.
+* M3 color and statistics: user-verified, including the revised Reset behavior.
 
-The explanations below describe the implementation at the end of M2. M3 color
-and statistics operations are not included. Update this guide after user
-verification, before committing future implementation changes.
+The explanations below describe the verified implementation through M3. Update
+this guide after user verification, before committing future implementation changes.
 
 For installation and manual checks, see [README](../README.md). For verification
 results and milestone status, see the [progress tracker](planning/progress-tracker.md).
@@ -20,14 +20,17 @@ results and milestone status, see the [progress tracker](planning/progress-track
 | `main.py` | Create the Tkinter root, create the application, start the event loop. |
 | `app.py` | Own image state and connect file actions, preview updates, and shutdown. |
 | `gui/layout.py` | Create menus, arrange panels, and return the preview canvas. |
-| `gui/controls.py` | Create the operation controls, disabled through M2. |
+| `gui/controls.py` | Manage the operation selector, parameter sliders, Apply, and Reset. |
+| `processing/color.py` | Grayscale, brightness/contrast, and RGB channel manipulation. |
+| `processing/statistics.py` | Compute intensity histograms and equalize grayscale images. |
+| `utils/validators.py` | Validate finite numeric values and inclusive ranges. |
 | `core/file_handler.py` | Validate file extensions, decode images, and encode/save images. |
 | Package `__init__.py` files | Mark `gui`, `core`, `processing`, and `utils` as regular Python packages. |
 | `requirements.txt` | Declare OpenCV 4.x and NumPy 2.x dependency ranges. |
 | `.gitignore` | Exclude Python cache files and the local `.venv` environment from Git. |
 
-`processing` and `utils` contain only package markers in the committed M2 code.
-Webcam and processing implementations belong to later milestones.
+M3 adds color/statistics functions and numeric validation to the previously empty
+packages. Filters, edges, segmentation, and webcam belong to later milestones.
 
 The package markers contain descriptions, not initialization logic. They make
 imports such as `from gui.layout import create_layout` explicit and conventional.
@@ -56,7 +59,8 @@ is run directly. Importing `main` does not open a window automatically.
 ### Why pass functions instead of calling them?
 
 In `app.py`, layout creation receives `self.close`, `self.open_image`, and
-`self.save_image`. These are **callbacks**: functions to call later.
+`self.save_image`, plus `self.select_operation` and `self.reset_image`. These are
+**callbacks**: functions to call later.
 
 For example, `command=on_open` connects a menu item to the open action. Writing
 `command=on_open()` would run it immediately while constructing the menu.
@@ -74,22 +78,27 @@ The constructor sets the title, initial size (`1000×650`), and minimum size
 | `preview_photo` | `None` | Tkinter-compatible image used by the canvas. |
 | `resize_job` | `None` | Identifier of a scheduled preview update, if one exists. |
 | `preview` | Canvas returned by layout | Widget on which the preview is drawn. |
+| `processing_job` | `None` | Identifier of a scheduled slider-driven operation. |
+| `histogram_canvas` | `None` | Canvas in the optional histogram window. |
+| `controls` | `OperationControls` instance | Owns selector and parameter widgets/variables. |
 
 The constructor also binds canvas `<Configure>` events to `schedule_preview` and
 the window-close protocol `WM_DELETE_WINDOW` to `close`.
 
 ### Original, result, and preview are different things
 
-After loading, the code assigns:
+After loading, `open_image` stores the original and calls `reset_image`, which
+creates the independent result. The relevant assignments are:
 
 ```python
 self.current_image = image
-self.display_image = image.copy()
+self.display_image = self.current_image.copy()
 ```
 
 `.copy()` gives the result its own pixel storage. Assigning `display_image = image`
 would make both names refer to the same array; later edits through one reference
-could change the other. M2 gives both arrays identical content but separate storage.
+could change the other. Loading and Reset give both arrays identical content but
+separate storage; processing then replaces only `display_image`.
 
 The preview is a smaller, temporary representation of `display_image`. It never
 replaces the full-resolution result. Saving therefore does not reduce resolution
@@ -107,15 +116,18 @@ preserved. M2 saves pixel content, not original file metadata.
 
 ## 4. GUI Construction
 
-### `gui/layout.py`: `create_layout(root, on_exit, on_open, on_save)`
+### `gui/layout.py`: `create_layout(root, on_exit, on_open, on_save, on_select, on_reset)`
 
 This function creates the File and Tools menus and attaches the menu bar with
 `root.configure(menu=menu_bar)`.
 
-At the end of M2:
+At the end of M3:
 
-* Open, Save As, and Exit have callbacks.
-* Webcam, processing operations, and Reset menu actions are disabled.
+* Open, Save As, Exit, all five operations, and Reset have callbacks.
+* Webcam remains disabled.
+
+The Tools menu loops through `OPERATIONS`. Its callback uses `lambda name=operation`
+to capture each current operation name, so every menu item invokes its own operation.
 
 On macOS, the active application's menus appear in the system menu bar at the top
 of the screen. They do not appear as a row inside the application window.
@@ -128,14 +140,24 @@ requested width.
 
 The preview canvas starts with requested dimensions of `1×1`, allowing the grid
 to determine its actual size. It has a white background. The function returns
-this canvas so `app.py` can draw on it without placing file-handling logic in
-the layout module.
+`(canvas, controls)` so `app.py` can draw previews and construct `OperationControls`
+in the control panel. File-handling logic remains outside the layout module.
 
-### `gui/controls.py`: `create_controls(parent)`
+### `gui/controls.py`: `OperationControls`
 
-This creates the operation label, disabled dropdown, parameter placeholder, and
-disabled Apply/Reset buttons. These are deliberate placeholders in M1/M2, not
-working processing actions. This function only constructs widgets.
+This class replaces M1/M2's placeholder `create_controls` function. A class keeps
+related widget references and parameter values together without adding another
+application coordinator. It does not process images.
+
+* `operation` is a `StringVar` connected to a read-only combobox.
+* `choose(operation)` rebuilds only the relevant parameter controls with defaults.
+* `add_slider(...)` creates a labeled `Scale` backed by a `DoubleVar`.
+* `values` maps parameter names to those variables; `sliders` stores widget references.
+* `set_image_loaded(loaded)` enables/disables sliders.
+* `get_parameters()` returns numeric keyword arguments for processing functions.
+
+Dropdown selection invokes the coordinator's selection callback. Slider movement
+invokes its scheduling callback. Apply and Reset call coordinator methods directly.
 
 ## 5. Opening an Image
 
@@ -306,11 +328,13 @@ The normal event loop continues after the callback returns.
 ## 10. Shutdown
 
 Both File → Exit and the window close button invoke `ComputerVisionApp.close()`.
-It cancels a pending preview update, clears `resize_job`, and calls `root.destroy()`.
+It calls `cancel_processing()`, cancels a pending preview update, clears the job
+identifiers, and calls `root.destroy()`.
 
 Cancelling first prevents delayed code from trying to redraw destroyed widgets.
-Destroying the root closes the GUI and lets `mainloop()` return. M1/M2 do not open
-a camera, so there are no webcam resources to release yet.
+Destroying the root closes the main window and any histogram child window, then
+lets `mainloop()` return. No camera is opened through M3, so there are no webcam
+resources to release yet.
 
 ## 11. Walkthrough to Explain During Evaluation
 
@@ -329,3 +353,171 @@ Suppose the user opens `holiday.png`, resizes the window, then saves `result.bmp
 
 If the user attempts to open an invalid file between steps 5 and 6, loading fails
 before image state is replaced. They can still save the previously loaded image.
+
+## 12. M3 Operation Flow
+
+```text
+Tools menu / Operation dropdown
+    → select_operation(name)
+    → cancel pending processing
+    → controls.choose(name): rebuild controls with defaults
+    → apply_operation()
+    → require_image()
+    → read parameters → validate → processing function
+    → display_image = result
+    → refresh_preview() → update_histogram() if open
+```
+
+`require_image()` warns and returns `False` when no original is loaded. Apply
+also warns when no operation is selected. Slider widgets are disabled without an
+image, while menus and buttons remain available to provide this feedback.
+
+`apply_operation()` dispatches through explicit `if/elif` branches. Each
+image-changing function receives `current_image`, not the previous result. The
+Histogram branch instead reads `display_image` and returns without replacing it.
+This means only one adjustment is active; operations are not a cumulative pipeline.
+
+**Example:** Grayscale produces a two-dimensional result. Selecting Brightness /
+Contrast afterward uses the original color image, so color returns. Repeated
+Apply at unchanged settings produces the same output, rather than compounding it.
+
+### Live sliders and Apply
+
+`schedule_operation()` schedules one `after(40, self.apply_operation)` callback.
+Further slider events keep that callback in place; it reads the latest values
+when it runs. This uses the same scheduling idea as preview resizing, with a
+separate `processing_job` identifier. All processing runs on Tkinter's event loop.
+
+`cancel_processing()` cancels and clears that job. Selection changes, Apply,
+Reset, and shutdown call it to avoid applying stale work later. Apply explicitly
+recomputes the selected operation; with live sliders it often produces no visible
+change because the latest result is already shown.
+
+### Reset versus opening a new image
+
+`reset_image()` cancels pending processing, checks for an image, and calls
+`controls.choose(self.controls.operation.get())`. Rebuilding the controls restores
+their defaults while retaining the selected operation. It then copies the
+original to `display_image`, refreshes the preview, and updates any open histogram.
+
+* Brightness resets to 0; contrast and each RGB gain reset to 1.
+* Grayscale and equalization stay selected, but the original image is restored.
+  Apply runs the selected operation again.
+* Histogram stays selected and its graph updates to describe the original.
+* There is no confirmation dialog; Reset never overwrites the source file.
+
+A successful `open_image()` first enables controls and calls `controls.choose("")`,
+then calls Reset. This deliberately clears the selection for a new source image.
+Cancelled or failed opens leave the existing image and settings intact.
+
+## 13. Color Algorithms: `processing/color.py`
+
+All functions return a new array and leave the input unchanged. They accept the
+application's uint8 BGR images; grayscale inputs are also supported.
+
+### `grayscale(image)`
+
+For a two-dimensional image, return a copy. Otherwise, use
+`cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)` to combine channels into a weighted
+intensity, approximately `0.114 × B + 0.587 × G + 0.299 × R`.
+
+For example, a pure red BGR pixel `[0, 0, 255]` becomes intensity 76. The result
+has shape `(height, width)`. Preview rendering converts it to RGB for Tkinter,
+while saving uses the actual grayscale array.
+
+### `brightness_contrast(image, brightness=0, contrast=1)`
+
+Validate brightness in `[-255, 255]` and contrast in `[0, 3]`. Compute:
+
+```text
+result = contrast × original pixel + brightness
+```
+
+Convert to `float32` before arithmetic so uint8 values cannot wrap around.
+`np.rint` rounds the values; `np.clip(..., 0, 255)` limits them; `astype(np.uint8)`
+returns normal image pixels. Negative results become zero, not their absolute value.
+
+**Example:** pixel 100 with contrast 1.5 and brightness −20 becomes 130. Pixel 10
+with brightness −50 and contrast 1 becomes 0. Defaults reproduce the original.
+Contrast 0 with brightness 0 produces black.
+
+### `rgb_channels(image, red=1, green=1, blue=1)`
+
+Validate each gain in `[0, 2]`. Convert a grayscale input to BGR if necessary.
+Build a gain array in OpenCV order: `[blue, green, red]`. NumPy broadcasts these
+three multipliers across every pixel, then rounds, clips, and converts to uint8.
+
+For a BGR pixel `[50, 100, 200]`, red gain 0 with other gains 1 produces
+`[50, 100, 0]`. All gains 1 preserve the original; all gains 0 produce black.
+The GUI uses increments of 0.05 for channel gains and contrast, and 1 for brightness.
+
+## 14. Statistics: `processing/statistics.py`
+
+### `compute_histogram(image)`
+
+Convert to grayscale, then call:
+
+```python
+cv2.calcHist([gray], [0], None, [256], [0, 256]).ravel()
+```
+
+Channel `[0]` selects the grayscale channel; `None` means no mask, so every pixel
+counts. There are 256 bins over `[0, 256)`, including intensity 255. `.ravel()`
+turns the returned column array into a one-dimensional array of counts.
+
+For `[0, 0, 128, 255]`, bins 0, 128, and 255 contain 2, 1, and 1; all others
+contain zero. Counts total the number of pixels for the tested images. The
+histogram is of grayscale intensity, not three separate RGB distributions.
+
+### `equalize_histogram(image)`
+
+Convert to grayscale and call `cv2.equalizeHist`. Equalization uses the cumulative
+intensity distribution to map populated levels across a wider range. The output
+is grayscale; it does not preserve color.
+
+For `[100, 100, 110, 120]`, the result is `[0, 0, 128, 255]`. Uniform images stay
+uniform, so this operation does not always visibly change an image or guarantee
+a perfectly flat histogram. It always operates on the loaded original in this GUI.
+
+## 15. Histogram Window and Lifecycle
+
+`show_histogram()` creates a window if `histogram_canvas` is absent or its widget
+has been destroyed. Otherwise it reuses the existing window. It updates the graph
+and raises the window with `lift()`.
+
+`create_histogram_window(root)` creates a child `Toplevel` containing an expanding
+canvas. `update_histogram()` computes counts from `display_image` and passes them
+to `display_histogram(canvas, counts)`. It does nothing if the window is closed.
+
+The drawing function scales 256 bars to the plot's width and the highest count to
+its height, then labels intensity and pixel-count axes. Its resize callback
+redraws from the supplied counts; no image-processing algorithm lives in the GUI.
+The graph updates after processing, Reset, or successfully opening another image.
+
+The canvas stores `histogram_resize_callback`, the binding identifier returned by
+Tkinter. Before replacing the resize handler, the old binding and its Tcl command
+are removed with `unbind`. This prevents handlers from accumulating as sliders
+update the graph. Closing the child window destroys its widgets; opening Histogram
+again creates a fresh canvas. Closing the main app destroys the child as well.
+
+Save As continues to save `display_image`, not a screenshot of the graph.
+
+## 16. Numeric Validation and Processing Errors
+
+`validate_number(value, name, minimum, maximum)` converts input with `float`,
+rejects conversion failures, checks `math.isfinite`, and enforces inclusive bounds.
+It returns the validated number or raises a clear `ValueError`.
+
+Sliders constrain ordinary input, but validation inside processing functions also
+protects direct calls from invalid values such as `"abc"`, `NaN`, or infinity.
+Negative brightness is valid; negative contrast or RGB gain is not.
+
+The coordinator handles:
+
+* `tk.TclError` while reading an invalid Tk numeric variable: parameter warning.
+* `ValueError` from validation or an empty operation selection: specific warning.
+* `cv2.error` from processing: a short processing-failed message.
+
+The result is assigned to `display_image` only after the selected image operation
+succeeds. These errors therefore preserve the prior result. Programming errors
+outside the expected cases are not hidden by a catch-all exception handler.

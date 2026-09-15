@@ -11,9 +11,14 @@ Automated GUI checks passed, and the user confirmed M1 works.
 Automated checks passed, and the user confirmed manual verification, including
 continuous preview updates during resizing.
 
+**M3 — Color + Statistics: complete.**
+
+User confirmed M3 works, including the revised Reset behavior. Code documentation
+has been updated for the verified implementation.
+
 ## Current Task
 
-Review code-level documentation for the committed M1/M2 implementation before M3.
+Commit the completed M3 implementation and documentation. M4 is next.
 
 ## Completed
 
@@ -91,11 +96,50 @@ Verified with Python 3.13.13, Tk 8.6, OpenCV 4.12.0, and NumPy 2.2.6:
 
 Dialog choices/messages and permission failures were simulated for automated checks.
 The user confirmed manual verification on 2026-09-15. Individual manual test results
-were not recorded. Processing and webcam controls remain disabled.
+were not recorded. Processing and webcam controls were disabled at the end of M2.
+
+### M3
+
+Implemented:
+
+* Grayscale conversion and grayscale histogram equalization.
+* Live brightness/contrast sliders and independent RGB channel gains.
+* A 256-bin grayscale intensity histogram for the displayed image, shown in a
+  reusable, resizable Tkinter window and refreshed when the image changes.
+* Tools actions, operation dropdown, Apply, and Reset.
+* Adjustments recompute from the loaded original. Reset restores it and default
+  slider values, keeping the selected operation without a confirmation prompt.
+  Opening a new image clears selection and pending processing.
+* Numeric validation rejects nonnumeric, nonfinite, and out-of-range parameters.
+* Slider updates use one pending 40 ms callback; pending work is cancelled on exit.
+* Existing histogram resize callbacks are removed before replacing them.
+
+Verification:
+
+* 126 M3 checks passed using known pixel examples, temporary files, and real Tk windows.
+* After the Reset adjustment, 134 M3 checks passed, including keeping all operation
+  selections, restoring slider defaults/original pixels, and clearing selection
+  when opening a new image.
+* Known grayscale values, brightness/contrast clipping, RGB channel ordering,
+  histogram counts, and equalization mapping matched expected results.
+* Normal, minimum, maximum, invalid, and nonfinite parameters were exercised.
+* Every operation without an image gives feedback; sliders are disabled until loading.
+* Live sliders, repeated Apply, reset, operation switching, new-image loading,
+  unchanged originals, and full-resolution grayscale saving passed.
+* Histogram reuse, closing/reopening, rendering, and callback cleanup passed.
+* Controls fit at 700×450, 1000×650, and 1200×800.
+* Invalid parameters and simulated OpenCV failures preserve the previous result.
+* Closing with pending processing/preview work and an open histogram passed.
+* All 63 M2 regression checks passed after M3 integration.
+* Twelve Python source files passed syntax parsing; whitespace checks passed.
+
+GUI actions were driven programmatically and dialogs simulated. The user confirmed
+manual verification, including Reset; individual manual results were not recorded. No new dependencies
+were added. Webcam remains disabled until M7.
 
 ## In Progress
 
-No feature implementation in progress. M2 is complete; M3 has not started.
+No feature implementation in progress. M3 is complete; M4 has not started.
 
 ## Blocked / Known Issues
 
@@ -113,7 +157,6 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Pending
 
-* M3: Color and statistics operations.
 * M4: Filters and local operators.
 * M5: Edge detection.
 * M6: Segmentation.
@@ -125,10 +168,16 @@ See `build-plan.md` for milestone scopes.
 
 ## Next Steps
 
-1. Review the new M1/M2 code documentation.
-2. Resume M3 — Color + Statistics when requested.
+1. Commit M3; user handles the push.
+2. Proceed to M4 — Filters + Local Operators when requested.
 
 ## Recent Changes
+
+* Marked M3 complete after user verification and updated code documentation,
+  including live controls, algorithms, histogram lifecycle, and Reset behavior.
+
+* Implemented M3's five operations and controls; passed M3 and M2 regression checks.
+* Added M3 ranges, operation behavior, and manual verification instructions to README.md.
 
 * Documented committed M1/M2 code and added the documentation workflow rule.
 

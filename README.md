@@ -605,8 +605,8 @@ when the application is active.
 M2 is complete: automated checks passed and the user confirmed manual verification.
 Keep this checklist for regression checks after future changes.
 
-The current implementation supports image opening, preview, and saving.
-Processing and webcam controls remain disabled until their milestones.
+This checklist covers image opening, preview, and saving. M3 processing operations
+are now available; webcam controls remain disabled until M7.
 
 1. Launch the app and select **File → Save As...** before opening an image.
    Expect a warning, with the app staying open.
@@ -628,7 +628,63 @@ Processing and webcam controls remain disabled until their milestones.
 9. Open and save another valid image after an error. Repeat several times,
    then close via **File → Exit**. Relaunch and test the window close button.
 
-Webcam access requires the operating system to grant camera permission to Python/Terminal.
+## M3 Controls and Manual Verification
+
+M3 is complete: automated checks passed and the user confirmed manual verification,
+including Reset. Keep this checklist for future regression checks.
+
+Select an operation in **Tools** or the **Operation** dropdown. Selection applies
+the operation immediately; sliders update the result live. **Apply** repeats the
+selected operation. Each image-changing operation starts from the loaded original,
+so adjustments do not accumulate. **Reset** restores the original and resets slider
+values to their defaults while keeping the selected operation. For operations
+without parameters, it restores the original; Apply runs the selected operation
+again. Reset does not ask for confirmation. Opening another image clears the selection.
+
+| Operation | Controls / ranges | Expected result |
+| --- | --- | --- |
+| Grayscale | No parameters | Converts color pixels to grayscale intensities. |
+| Brightness / Contrast | Brightness: −255 to 255 (default 0); contrast: 0 to 3 (default 1, step 0.05) | Computes `contrast × pixel + brightness`, rounded and clipped to 0–255. |
+| RGB Channels | Red, green, blue gains: 0 to 2 (default 1, step 0.05) | Multiplies each channel independently; 0 removes it, 1 preserves it, 2 doubles it with clipping. |
+| Histogram | No parameters | Opens a graph of the displayed image's 256 grayscale intensity counts; the image stays unchanged. |
+| Histogram Equalization | No parameters | Converts the original to grayscale, then redistributes its intensities to improve contrast where possible. |
+
+The histogram's horizontal axis is intensity (0–255), and its vertical axis is
+pixel count. An open histogram updates when the displayed image changes. It is
+drawn using Tkinter; no plotting dependency is required. Save As saves the image
+result, not the histogram graph.
+
+1. Before opening an image, try each Tools operation, Apply, and Reset. Expect a
+   warning and a usable application. Parameter sliders should be disabled.
+2. Open a colorful image. Choose Grayscale and save the result as PNG. Reopen the
+   saved file to check its appearance and original pixel dimensions.
+3. Reopen the color original. Choose Brightness / Contrast and drag each slider
+   continuously. Try brightness −255, 0, and 255, and contrast 0, 1, and 3.
+   With brightness 0, contrast 0 should produce black. With contrast 1, brightness
+   −255 should produce black and 255 should produce white.
+4. Return brightness to 0 and contrast to 1: the original should return exactly.
+   Repeated Apply should not keep brightening the image.
+5. Choose RGB Channels. Set each channel gain to 0 individually and observe its
+   removal. Set all three to 0 for black, all to 1 for the original, and try 2
+   to check clipping. The sliders limit input to the allowed range.
+6. Open Histogram after an adjustment. Check that it describes the current
+   result without changing it. Keep the graph open while adjusting another
+   operation, then resize it, close it, and reopen it.
+7. Choose Histogram Equalization on a low-contrast image. Expect a grayscale
+   result with more spread-out intensities. A uniform image may stay unchanged.
+   Compare its histogram with the original using Reset.
+8. Switch repeatedly between operations and use Reset. Check that the selection
+   stays, brightness returns to 0, contrast/RGB gains return to 1, and the original
+   image appears without a confirmation prompt. Open another image with
+   sliders or a histogram active; the new original should appear with cleared controls.
+9. Try the controls at the minimum window size. Save both color and grayscale
+   results, cancel dialogs, and repeat M2 invalid-file checks. Close the app with
+   the histogram open and after moving a slider.
+
+Algorithm references: OpenCV's [brightness/contrast tutorial](https://docs.opencv.org/4.x/d3/dc1/tutorial_basic_linear_transform.html)
+and [histogram equalization tutorial](https://docs.opencv.org/4.x/d4/d1b/tutorial_histogram_equalization.html).
+
+Webcam access, when implemented, will require the operating system to grant camera permission to Python/Terminal.
 
 ---
 

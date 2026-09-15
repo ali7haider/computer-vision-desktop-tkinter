@@ -6,7 +6,10 @@ from tkinter import filedialog, messagebox
 import cv2
 
 from core.file_handler import load_image, save_image
-from gui.layout import create_layout
+from gui.controls import OperationControls
+from gui.layout import create_layout, create_histogram_window, display_histogram
+from processing.color import grayscale, brightness_contrast, rgb_channels
+from processing.statistics import compute_histogram, equalize_histogram
 
 
 IMAGE_FILE_TYPES = [
@@ -26,8 +29,15 @@ class ComputerVisionApp:
         self.display_image = None
         self.preview_photo = None
         self.resize_job = None
-        self.preview = create_layout(
-            self.root, self.close, self.open_image, self.save_image
+        self.processing_job = None
+        self.histogram_canvas = None
+        self.preview, controls_panel = create_layout(
+            self.root, self.close, self.open_image, self.save_image,
+            self.select_operation, self.reset_image,
+        )
+        self.controls = OperationControls(
+            controls_panel, self.select_operation, self.apply_operation,
+            self.reset_image, self.schedule_operation,
         )
         self.preview.bind("<Configure>", self.schedule_preview)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
@@ -52,8 +62,9 @@ class ComputerVisionApp:
             return
         # Preserve the loaded original separately from the result to display/save.
         self.current_image = image
-        self.display_image = image.copy()
-        self.refresh_preview()
+        self.controls.set_image_loaded(True)
+        self.controls.choose("")
+        self.reset_image()
 
     def save_image(self):
         if self.display_image is None:
@@ -78,6 +89,83 @@ class ComputerVisionApp:
                 "in a folder where you have permission to save.",
                 parent=self.root,
             )
+
+    def require_image(self):
+        if self.current_image is None:
+            messagebox.showwarning(
+                "No Image", "Please open an image before using this operation.",
+                parent=self.root,
+            )
+            return False
+        return True
+
+    def cancel_processing(self):
+        if self.processing_job is not None:
+            self.root.after_cancel(self.processing_job)
+            self.processing_job = None
+
+    def select_operation(self, operation):
+        self.cancel_processing()
+        self.controls.choose(operation)
+        self.apply_operation()
+
+    def schedule_operation(self):
+        if self.current_image is not None and self.processing_job is None:
+            self.processing_job = self.root.after(40, self.apply_operation)
+
+    def apply_operation(self):
+        self.cancel_processing()
+        if not self.require_image():
+            return
+        operation = self.controls.operation.get()
+        try:
+            parameters = self.controls.get_parameters()
+        except tk.TclError:
+            messagebox.showwarning("Invalid Parameter", "Use a valid slider value.", parent=self.root)
+            return
+        try:
+            # Recompute from the original so repeated Apply/slider changes do not compound.
+            if operation == "Grayscale":
+                result = grayscale(self.current_image)
+            elif operation == "Brightness / Contrast":
+                result = brightness_contrast(self.current_image, **parameters)
+            elif operation == "RGB Channels":
+                result = rgb_channels(self.current_image, **parameters)
+            elif operation == "Histogram Equalization":
+                result = equalize_histogram(self.current_image)
+            elif operation == "Histogram":
+                self.show_histogram()
+                return
+            else:
+                raise ValueError("Please choose an operation.")
+        except ValueError as error:
+            messagebox.showwarning("Invalid Parameter", str(error), parent=self.root)
+            return
+        except cv2.error:
+            messagebox.showerror("Processing Failed", "Could not process this image.", parent=self.root)
+            return
+        self.display_image = result
+        self.refresh_preview()
+        self.update_histogram()
+
+    def reset_image(self):
+        self.cancel_processing()
+        if not self.require_image():
+            return
+        self.controls.choose(self.controls.operation.get())
+        self.display_image = self.current_image.copy()
+        self.refresh_preview()
+        self.update_histogram()
+
+    def show_histogram(self):
+        if self.histogram_canvas is None or not self.histogram_canvas.winfo_exists():
+            self.histogram_canvas = create_histogram_window(self.root)
+        self.update_histogram()
+        self.histogram_canvas.winfo_toplevel().lift()
+
+    def update_histogram(self):
+        if self.histogram_canvas is not None and self.histogram_canvas.winfo_exists():
+            display_histogram(self.histogram_canvas, compute_histogram(self.display_image))
 
     def schedule_preview(self, event):
         # Keep one scheduled update so continuous resizing still refreshes.
@@ -110,6 +198,7 @@ class ComputerVisionApp:
         self.preview.create_image(width / 2, height / 2, image=self.preview_photo)
 
     def close(self):
+        self.cancel_processing()
         if self.resize_job is not None:
             self.root.after_cancel(self.resize_job)
             self.resize_job = None
