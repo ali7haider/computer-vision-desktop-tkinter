@@ -2,174 +2,87 @@
 
 ## Current Status
 
-Project requirements, architecture, coding standards, UI rules, and development plan have been defined.
+**M1 — Project Foundation: complete.**
 
-Implementation has **not started yet**.
-
----
-
-## Current Phase / Milestone
-
-**Milestone 1 — Project Foundation**
-
-Status: **Ready to Start**
-
----
+Automated GUI checks passed, and the user confirmed M1 works.
 
 ## Current Task
 
-Set up the initial project structure and create the basic Tkinter application shell.
-
----
+Commit and push the completed M1 foundation before starting M2.
 
 ## Completed
 
 ### Project Planning
 
-* Reviewed assignment requirements and constraints.
-* Defined project scope.
-* Defined project architecture.
-* Defined module responsibilities.
-* Defined coding standards.
-* Defined UI tokens.
-* Defined UI rules.
-* Defined development milestones.
-* Defined AI agent working rules.
-* Defined the no-crash/error-handling principle.
+* Reviewed the assignment and defined scope, architecture, code standards, UI rules, and build plan.
+* Defined the no-crash principle and agent workflow.
 
-### Project Context
+### M1 — Project Foundation
 
-Created:
+* Added `main.py` to create the Tkinter root and run the event loop.
+* Added `ComputerVisionApp` in `app.py` to coordinate the window and shutdown.
+* Created `gui`, `core`, `processing`, and `utils` packages.
+* Added GUI layout and controls modules; later feature modules will be added in their milestones.
+* Added File and Tools menus, control panel, and expandable image preview.
+* Disabled unfinished menu actions, operation selection, Apply, and Reset.
+* Connected File → Exit and window close to application shutdown.
 
-```text id="lses1a"
-AGENTS.md
-README.md
+## Verification
 
-context/
-├── project-overview.md
-├── architecture.md
-├── code-standards.md
-│
-├── ui/
-│   ├── ui-tokens.md
-│   └── ui-rules.md
-│
-└── planning/
-    ├── build-plan.md
-    └── progress-tracker.md
-```
+Verified using Python 3.13.13 with Tk 8.6:
 
----
+* Window and both panels are visible.
+* File and Tools menus exist.
+* Unfinished actions and controls are disabled.
+* Layout fits at 700×450, 1000×650, and 1200×800; preview expands with the window.
+* File → Exit and the window-close protocol callback both end the event loop without callback errors.
+* Repeated creation and closing of the shell succeeds.
+
+All eight Python files passed syntax parsing. Whitespace checks passed.
+
+Automated checks ran against real Tk windows. The user confirmed M1 works on
+2026-09-15, including locating File and Tools in the macOS system menu bar.
 
 ## In Progress
 
-Nothing currently in implementation.
+No feature implementation in progress. M2 is next after the M1 commit and push.
 
-The project is ready to begin **Milestone 1 — Project Foundation**.
+## Blocked / Known Issues
 
----
+* The default pyenv Python 3.11.7 lacks `_tkinter`.
+* System Python 3.9.6 imports Tk but aborts on GUI launch with a macOS version compatibility error.
+* The installed framework Python 3.13.13 successfully runs the GUI checks. Use it for this milestone:
 
-## Blocked
+```bash
+/Library/Frameworks/Python.framework/Versions/3.13/bin/python3 main.py
+```
 
-None.
-
----
+The application contains no machine-specific paths. Select a working Python/Tkinter environment for subsequent development and dependency installation.
 
 ## Pending
 
-### Milestone 1
+* M2: Image opening, display, saving, and safe file-error handling.
+* M3: Color and statistics operations.
+* M4: Filters and local operators.
+* M5: Edge detection.
+* M6: Segmentation.
+* M7: Webcam and snapshot.
+* M8: Integration and stability.
+* M9: Documentation and demo.
 
-* Create project folders.
-* Create Python module files.
-* Implement `main.py`.
-* Implement initial `app.py`.
-* Create basic Tkinter window.
-* Create basic GUI layout.
-* Add File and Tools menus.
-* Add control panel.
-* Add image preview area.
-* Implement safe application exit.
-
-### Later Milestones
-
-* Image opening and saving
-* Color operations
-* Histogram/statistics
-* Filters
-* Edge detection
-* Segmentation
-* Webcam and snapshot
-* Integration and stability testing
-* PDF documentation
-* Demo preparation
-
-See `build-plan.md` for the complete milestone plan.
-
----
+See `build-plan.md` for milestone scopes.
 
 ## Next Steps
 
-Start **Milestone 1 — Project Foundation**.
-
-The immediate development flow is:
-
-```text id="nvfwqk"
-Create Folder Structure
-        ↓
-Create Python Files
-        ↓
-Implement main.py
-        ↓
-Implement Application Class
-        ↓
-Create Basic GUI Layout
-        ↓
-Verify Application Launch
-        ↓
-Verify Clean Exit
-```
-
-Do not begin image-processing operations until the basic application foundation works correctly.
-
----
-
-## Known Issues
-
-None currently.
-
-Implementation has not started.
-
----
-
-## Open Questions
-
-None currently.
-
-Any new question that affects scope or architecture should be resolved before introducing unnecessary complexity.
-
----
+1. Commit and push the completed M1 changes.
+2. Begin M2 — Image I/O + Basic GUI.
 
 ## Recent Changes
 
-* Finalized project overview.
-* Finalized architecture.
-* Finalized code standards.
-* Finalized simple GUI design tokens.
-* Finalized GUI behavior rules.
-* Defined nine development milestones.
-* Defined AI agent workflow in `AGENTS.md`.
-* Removed unnecessary framework context such as:
-
-  * `decision-log.md`
-  * `library-docs.md`
-  * `ui-registry.md`
-* Limited project skills to those that provide useful value:
-
-  * `/architect`
-  * `/review`
-  * `/recover`
-
----
+* Implemented and checked the M1 shell.
+* Marked M1 complete after user verification.
+* Removed stale tracker references to separate UI tokens and project skills, following `AGENTS.md`.
+* Recorded runtime limitations and the working verification environment.
 
 ## Last Updated
 
