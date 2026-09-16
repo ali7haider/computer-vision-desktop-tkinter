@@ -22,9 +22,13 @@ has been updated for the verified implementation.
 
 **M6 — Segmentation: complete.**
 
+**M7 — Webcam + Snapshot: implemented; simulated-camera checks passed, physical-camera verification pending.**
+
 ## Current Task
 
-M6 is user-verified and documented. User will create the commit; M7 is next.
+M7 code documentation is updated at the user’s request. User will create the
+commit. Remaining physical-camera checks and the native Save dialog issue are
+recorded below.
 
 ## Completed
 
@@ -145,7 +149,40 @@ were added. Webcam remains disabled until M7.
 
 ## In Progress
 
-No feature implementation in progress.
+M7 implementation, automated verification, and code documentation are finished.
+Complete physical-camera verification results have not been recorded.
+
+### M7 — Webcam + Snapshot: Awaiting Physical-Camera Verification
+
+* Added `core/webcam.py` to own the default camera, check availability/read results,
+  and release the handle on stop and expected capture failures.
+* Enabled File → Access Live Webcam. Added Take Snapshot and Stop Webcam below
+  the preview, visible only during capture. Both disappear after snapshot, stop,
+  failure, or successful image open; the empty button row is also hidden.
+* Live frames use one pending Tkinter callback, scheduled 30 ms after each frame.
+  Preview retains proportions and uses a separate latest frame; static image state
+  remains intact until a snapshot or successful image open replaces it.
+* Snapshot copies the full-resolution frame, releases the camera, clears operation
+  selection, and becomes the original for all processing and saving operations.
+* Stop/failure restores the prior static result, parameters, and label. Processing
+  and saving are guarded during capture; an existing histogram closes on start.
+  Successful image opens stop capture; cancelled/failed opens preserve live mode.
+* Exit cancels frame/processing/preview callbacks and releases the camera.
+* Added a direct Save As… button below Reset, using the existing save callback.
+  Button invocation verified for no image, live capture, and saving a processed
+  snapshot. M6 checks confirmed controls still fit the minimum window size.
+* 74 simulated-camera checks passed with real Tk windows: button visibility,
+  unavailable camera,
+  failed reads and OpenCV exceptions, no-frame snapshot, repeated start/stop,
+  single camera handle, live updates, controls/guards, static state restoration,
+  snapshot independence, processing and full-resolution PNG saving, Open behavior,
+  minimum-window layout, and shutdown with pending callbacks.
+* 354 M6, 144 M3, and 63 M2 regression checks passed. All 16 Python files passed syntax
+  parsing; whitespace checks passed. No dependencies were added.
+* Actual camera hardware, OS permission prompts, driver responsiveness, and physical
+  camera release have not been tested by the agent. README includes manual steps.
+  Code documentation now covers camera ownership, scheduling, snapshot/stop flow,
+  state preservation, button visibility, guards, and the direct Save As button.
 
 ### M6 — Segmentation: Complete
 
@@ -229,6 +266,10 @@ User confirmed the filters and applied-result label work on 2026-09-16.
 
 ## Blocked / Known Issues
 
+* User reported initial clipping of the native macOS Save As dialog. The proposed
+  standalone-dialog change was reverted by the user; the parented dialog remains.
+  This visual issue is unresolved and excluded from the M7 fix claims.
+
 * The default pyenv Python 3.11.7 lacks `_tkinter`.
 * System Python 3.9.6 imports Tk but aborts on GUI launch with a macOS version compatibility error.
 * `.venv` uses the working framework Python 3.13.13 and has OpenCV/NumPy installed.
@@ -243,7 +284,7 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Pending
 
-* M7: Webcam and snapshot.
+* M7: Remaining physical-camera verification results.
 * M8: Integration and stability.
 * M9: Documentation and demo.
 
@@ -251,10 +292,17 @@ See `build-plan.md` for milestone scopes.
 
 ## Next Steps
 
-1. User commits the verified and documented M6 changes.
-2. Proceed to M7 — Webcam + Snapshot when requested.
+1. User creates the M7 commit with the updated code documentation.
+2. Record remaining physical-camera checklist results and revisit Save dialog clipping.
+3. Proceed to M8 — Integration + Stability when requested.
 
 ## Recent Changes
+
+* Documented current M7 code at the user’s request, including hidden webcam
+  buttons and direct Save As. Recorded the reverted dialog workaround as unresolved.
+
+* Implemented M7 webcam lifecycle, live preview, snapshot, and stop controls;
+  simulated-camera checks passed, with physical-camera verification pending.
 
 * Marked M6 complete after user confirmation and updated code documentation.
 

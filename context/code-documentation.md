@@ -1,7 +1,7 @@
 # Code Documentation
 
 This guide explains how the verified application works, so the student can trace
-the code and explain it during evaluation. It covers **M1–M6**:
+the code and explain it during evaluation. It covers **M1–M7**:
 
 * M1 foundation: commit `3b953a0`.
 * M2 image loading, preview, and saving: commit `b0c57a2`.
@@ -9,8 +9,10 @@ the code and explain it during evaluation. It covers **M1–M6**:
 * M4 filters and applied-result label: user-verified on 2026-09-16.
 * M5 Sobel and Canny edge detection: user-verified on 2026-09-16.
 * M6 thresholding and contour detection: user-verified on 2026-09-16.
+* M7 webcam lifecycle and snapshot: implemented with simulated-camera verification;
+  see the progress tracker for remaining physical-camera checks.
 
-The explanations below describe the verified implementation through M6. Update
+The explanations below describe the verified implementation through M7. Update
 this guide after user verification, before committing future implementation changes.
 
 For installation and manual checks, see [README](../README.md). For verification
@@ -30,6 +32,7 @@ results and milestone status, see the [progress tracker](planning/progress-track
 | `processing/edges.py` | Sobel mean-ratio thresholding and Canny binary edge maps. |
 | `processing/segmentation.py` | Global/adaptive threshold masks and contour overlays. |
 | `utils/validators.py` | Validate finite numbers, ranges, odd filter/block sizes, and edge kernel/aperture choices. |
+| `core/webcam.py` | Own, read, and release the default camera handle. |
 | `core/file_handler.py` | Validate file extensions, decode images, and encode/save images. |
 | Package `__init__.py` files | Mark `gui`, `core`, `processing`, and `utils` as regular Python packages. |
 | `requirements.txt` | Declare OpenCV 4.x and NumPy 2.x dependency ranges. |
@@ -38,7 +41,7 @@ results and milestone status, see the [progress tracker](planning/progress-track
 M3 adds color/statistics functions and numeric validation to the previously empty
 packages. M4 adds local filters and textbox validation. M5 adds edge detection
 and parameter dropdowns. M6 adds segmentation and text-valued parameter labels.
-Webcam belongs to M7.
+M7 adds webcam capture, snapshots, and a direct Save As button.
 
 The package markers contain descriptions, not initialization logic. They make
 imports such as `from gui.layout import create_layout` explicit and conventional.
@@ -125,15 +128,14 @@ preserved. M2 saves pixel content, not original file metadata.
 
 ## 4. GUI Construction
 
-### `gui/layout.py`: `create_layout(root, on_exit, on_open, on_save, on_select, on_reset, preview_status)`
+### `gui/layout.py`: `create_layout(...)`
 
 This function creates the File and Tools menus and attaches the menu bar with
 `root.configure(menu=menu_bar)`.
 
-At the end of M4:
-
-* Open, Save As, Exit, all eight operations, and Reset have callbacks.
-* Webcam remains disabled.
+Open, Save As, Access Live Webcam, Exit, all thirteen operations, and Reset
+have callbacks. The function also receives snapshot and stop callbacks and the
+preview-status variable.
 
 The Tools menu loops through `OPERATIONS`. Its callback uses `lambda name=operation`
 to capture each current operation name, so every menu item invokes its own operation.
@@ -149,7 +151,7 @@ requested width.
 
 The preview canvas starts with requested dimensions of `1×1`, allowing the grid
 to determine its actual size. It has a white background. The function returns
-`(canvas, controls)` so `app.py` can draw previews and construct `OperationControls`
+`(canvas, controls, snapshot, stop)` so `app.py` can draw previews and construct `OperationControls`
 in the control panel. File-handling logic remains outside the layout module.
 
 ### `gui/controls.py`: `OperationControls`
@@ -164,11 +166,13 @@ application coordinator. It does not process images.
 * `values` maps parameter names to those variables; `sliders` stores widget references.
 * `add_entry(...)` creates a labeled textbox backed by a `StringVar`.
 * `entries` stores textbox widgets, alongside `sliders`.
-* `set_image_loaded(loaded)` enables/disables sliders and entries.
-* `get_parameters()` returns numeric keyword arguments for processing functions.
+* `set_image_loaded(loaded)` enables/disables sliders, entries, and parameter dropdowns.
+* `selector` stores the operation dropdown so live capture can disable it.
+* `get_parameters()` returns numbers or strings under the processing parameter names.
 
 Dropdown selection invokes the coordinator's selection callback. Slider movement
-invokes its scheduling callback. Apply and Reset call coordinator methods directly.
+invokes its scheduling callback. Apply, Reset, and Save As call coordinator methods
+directly. The `on_save` constructor argument connects the button to `save_image()`.
 
 ## 5. Opening an Image
 
@@ -339,8 +343,9 @@ The normal event loop continues after the callback returns.
 ## 10. Shutdown
 
 Both File → Exit and the window close button invoke `ComputerVisionApp.close()`.
-It calls `cancel_processing()`, cancels a pending preview update, clears the job
-identifiers, and calls `root.destroy()`.
+It calls `cancel_processing()` and `stop_webcam()`, then cancels any pending
+preview update, clears job identifiers, and calls `root.destroy()`. Camera cleanup
+therefore runs for both exit paths.
 
 Cancelling first prevents delayed code from trying to redraw destroyed widgets.
 Destroying the root closes the main window and any histogram child window, then
@@ -908,3 +913,106 @@ Expected validation failures raise `ValueError`; the coordinator shows a warning
 and leaves the previous result and label intact. OpenCV failures use the existing
 processing-error dialog. Controls are disabled without an image, and menu/Apply
 actions use the existing no-image warning. Corrected values can be applied normally.
+
+
+## 27. M7 Camera Ownership: `core/webcam.py`
+
+`Webcam` owns a single `capture` handle, initially `None`. It has no Tkinter
+responsibilities; the coordinator owns scheduling and displays errors.
+
+* `start()` releases any previous handle and opens `cv2.VideoCapture(0)`, the
+  default camera. It checks `isOpened()`. Failure releases the handle and raises
+  a clear `ValueError`; OpenCV errors are also cleaned up and propagated.
+* `read()` requires an active handle and calls `capture.read()`. A false success
+  flag, missing frame, or empty array is a failure. Expected failures release the
+  handle before propagating `ValueError` or `cv2.error`.
+* `stop()` clears the stored handle and calls `release()` if one exists. Repeated
+  stops have no effect once the handle is `None`.
+
+Frames normally arrive as full-resolution BGR arrays. No files are written and
+no video is recorded automatically.
+
+## 28. Webcam State and Callback Flow
+
+The coordinator adds these fields:
+
+| State | Purpose |
+| --- | --- |
+| `webcam` | Camera owner from `core/webcam.py`. |
+| `webcam_running` | Whether the main preview is in live mode. |
+| `webcam_job` | The one pending frame callback, or `None`. |
+| `latest_frame` | Most recently read full-resolution frame. |
+| `static_status` | Applied-result label to restore when live mode ends. |
+| `snapshot_button`, `stop_button` | Widgets returned by the layout. |
+
+`start_webcam()` ignores repeated starts while already running and cancels pending
+processing. It opens the camera and reads the first frame before entering live
+mode. Startup failure leaves the previous static image intact and shows an error.
+After a successful first read it saves the static label, disables processing
+controls and operation selection, shows the camera buttons, and displays the frame.
+An existing histogram closes because it would describe the previous static result.
+
+```text
+Start → open camera → read first frame → show live preview
+    → after(30, update_webcam)
+    → read frame → refresh preview → schedule next callback
+```
+
+`update_webcam()` clears the consumed job identifier, reads the next frame, and
+schedules another callback only after displaying it. Read failure calls
+`stop_webcam()` before showing a message. ValueError messages are user-oriented;
+OpenCV errors receive a short generic message rather than a technical traceback.
+
+The 30 ms delay is not a frame-rate guarantee. Camera reads and display work run
+on Tkinter's event loop, so driver latency can affect responsiveness. There is no
+worker thread or blocking Python capture loop.
+
+`refresh_preview()` selects `latest_frame` in live mode and `display_image` in
+static mode. Both use the existing aspect-preserving resize and BGR-to-RGB display
+conversion. `current_image` and `display_image` retain the prior static images
+throughout live capture; the live feed does not overwrite them.
+
+## 29. Snapshot, Stop, and User Actions
+
+`take_snapshot()` requires a running camera and a valid latest frame. It copies
+that frame, stops/releases the camera, assigns the copy to `current_image`, enables
+image controls, clears the selected operation, and resets the preview. The snapshot
+becomes the new original, with a separate displayed copy. Processing and saving
+then follow the same paths as a loaded image, at full capture resolution.
+
+`stop_webcam()` cancels the frame callback, releases the camera, clears live state,
+and hides/disables both camera buttons. If capture was active, it restores image
+control availability, the operation selector, and the saved applied-result label,
+then redraws the previous static result. Parameter values and operation selection
+remain intact. Without a prior image, the empty preview returns.
+
+The buttons share a frame below the preview. `grid_remove()` hides the entire
+frame initially and on Stop; `grid()` restores its placement when capture starts.
+Consequently, snapshot, failure, and successful image opening also hide the buttons
+through their shared Stop path, without leaving an empty button row.
+
+| Action during capture | Behavior |
+| --- | --- |
+| Take Snapshot | Stop and release, then use the copied frame as the new original. |
+| Stop Webcam | Release and restore the previous static image and settings. |
+| Tools operation, Apply, Reset, or Save As | Warn to take a snapshot or stop first. |
+| Move a parameter control | Controls are disabled; processing scheduling also checks live mode. |
+| Successfully open an image | Stop capture and replace the original with the loaded image. |
+| Cancel Open or fail to load a file | Leave live capture running. |
+| Exit | Cancel callbacks and release the camera before destroying the window. |
+
+`warn_live_webcam()` supplies the shared reminder. Guards in selection, image
+validation, saving, and scheduling prevent static processing from replacing a
+live preview. The camera remains available for another start after Stop, snapshot,
+or a handled failure, subject to operating-system and device availability.
+
+## 30. Direct Save Button and Native Dialog
+
+The Save As… button below Reset and File → Save As both invoke `save_image()`.
+They therefore share no-image/live-mode guards, cancellation handling, extension
+choices, and full-resolution saving. No second saving implementation is introduced.
+
+The current code retains `filedialog.asksaveasfilename(parent=self.root, ...)`.
+The proposed standalone macOS dialog change was reverted and is not part of M7.
+The reported initial clipping of the native Save dialog remains a tracked UI issue;
+this documentation does not claim it was fixed.

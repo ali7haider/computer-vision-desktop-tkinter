@@ -6,12 +6,13 @@ from tkinter import ttk
 from gui.controls import OPERATIONS
 
 
-def create_layout(root, on_exit, on_open, on_save, on_select, on_reset, preview_status):
+def create_layout(root, on_exit, on_open, on_save, on_select, on_reset, preview_status,
+                  on_webcam, on_snapshot, on_stop):
     menu_bar = tk.Menu(root)
     file_menu = tk.Menu(menu_bar, tearoff=False)
     file_menu.add_command(label="Open...", command=on_open)
     file_menu.add_command(label="Save As...", command=on_save)
-    file_menu.add_command(label="Access Live Webcam", state="disabled")
+    file_menu.add_command(label="Access Live Webcam", command=on_webcam)
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=on_exit)
     menu_bar.add_cascade(label="File", menu=file_menu)
@@ -45,7 +46,14 @@ def create_layout(root, on_exit, on_open, on_save, on_select, on_reset, preview_
         preview, background="#FFFFFF", highlightthickness=0, width=1, height=1
     )
     canvas.grid(row=1, column=0, sticky="nsew")
-    return canvas, controls
+    camera_controls = ttk.Frame(preview)
+    camera_controls.grid(row=2, column=0, sticky="w", pady=(8, 0))
+    snapshot = ttk.Button(camera_controls, text="Take Snapshot", command=on_snapshot, state="disabled")
+    snapshot.grid(row=0, column=0, padx=(0, 8))
+    stop = ttk.Button(camera_controls, text="Stop Webcam", command=on_stop, state="disabled")
+    stop.grid(row=0, column=1)
+    camera_controls.grid_remove()
+    return canvas, controls, snapshot, stop
 
 
 def create_histogram_window(root):

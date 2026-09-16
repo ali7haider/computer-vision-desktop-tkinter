@@ -14,7 +14,7 @@ OPERATIONS = (
 
 
 class OperationControls:
-    def __init__(self, parent, on_select, on_apply, on_reset, on_change):
+    def __init__(self, parent, on_select, on_apply, on_reset, on_change, on_save):
         self.on_change = on_change
         self.image_loaded = False
         self.values = {}
@@ -30,6 +30,7 @@ class OperationControls:
         )
         selector.grid(row=1, column=0, sticky="ew", pady=(4, 12))
         selector.bind("<<ComboboxSelected>>", lambda event: on_select(self.operation.get()))
+        self.selector = selector
         self.parameters = ttk.Frame(parent)
         self.parameters.grid(row=2, column=0, sticky="ew", pady=(0, 12))
         self.parameters.columnconfigure(0, weight=1)
@@ -38,6 +39,9 @@ class OperationControls:
         )
         ttk.Button(parent, text="Reset", command=on_reset).grid(
             row=4, column=0, sticky="ew"
+        )
+        ttk.Button(parent, text="Save As…", command=on_save).grid(
+            row=5, column=0, sticky="ew", pady=(8, 0)
         )
         self.choose("")
 

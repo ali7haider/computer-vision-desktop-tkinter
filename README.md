@@ -606,7 +606,7 @@ M2 is complete: automated checks passed and the user confirmed manual verificati
 Keep this checklist for regression checks after future changes.
 
 This checklist covers image opening, preview, and saving. M3 processing operations
-are now available; webcam controls remain disabled until M7.
+are now available; see the M7 section for webcam controls.
 
 1. Launch the app and select **File → Save As...** before opening an image.
    Expect a warning, with the app staying open.
@@ -733,7 +733,7 @@ Operation dropdown. Selection applies defaults. Edit parameters, then click
 **Apply**; Reset restores the original and defaults while keeping the selection.
 Both methods convert the original to grayscale and return a full-resolution
 binary image: white edges on black. M5 brings the operation count to ten;
-M6 adds the three segmentation operations described below. Webcam remains planned.
+M6 adds the three segmentation operations described below; M7 adds webcam capture.
 
 | Operation | Parameters | Behavior |
 | --- | --- | --- |
@@ -811,7 +811,63 @@ masks are grayscale and contour results are color images.
 7. Save/reopen each result as PNG; check dimensions and appearance. Open another
    image to clear the operation, then close after moving a live threshold slider.
 
-Webcam access, when implemented, will require the operating system to grant camera permission to Python/Terminal.
+## M7 Webcam Controls and Manual Verification
+
+Choose **File → Access Live Webcam** to open the default camera (device 0).
+Grant camera permission to the application hosting Python if the operating system
+asks. On macOS, check **System Settings → Privacy & Security → Camera** if access
+is denied. Another application using the camera may prevent access.
+
+The **Save As…** button below Reset opens the same save dialog as File → Save As.
+It saves the current full-resolution result and gives a warning when no image is
+loaded or while the webcam is live.
+
+The main preview shows the live feed. **Take Snapshot** and **Stop Webcam** are
+below it and are visible only while capture is running. Both disappear after a
+snapshot, Stop, capture failure, or opening an image.
+
+* **Take Snapshot** copies the latest displayed frame at full resolution, releases
+  the camera, and makes the snapshot the new original. Selection clears; choose
+  any processing operation and save normally.
+* **Stop Webcam** releases the camera and restores the previous image, result,
+  parameters, and applied label. If no image was loaded, the empty preview returns.
+* Processing controls are disabled during live capture. Tools, Apply, Reset, and
+  Save As give a reminder to take a snapshot or stop first. Starting an already
+  running webcam does not open another camera handle.
+* Successfully opening an image stops capture and loads that image. Cancelling
+  Open or choosing an unreadable file leaves capture running.
+* An existing histogram closes when live capture begins. Reopen Histogram after
+  a snapshot or Stop to view the static image's statistics.
+* Capture failures stop and release the camera, restore the previous static
+  preview, and show an error. Closing the application also releases the camera
+  and cancels scheduled frame updates.
+
+Frame reads use Tkinter's event loop, with the next read scheduled 30 ms after
+processing the previous frame. This is not a guaranteed frame rate: camera/driver
+latency and image size affect responsiveness. Opening or reading a camera can
+briefly block while the driver responds. No video is recorded or saved automatically.
+
+Automated checks use simulated cameras with real Tk windows. Physical camera
+availability, permission prompts, image quality, and actual driver cleanup require
+manual verification:
+
+1. Launch the app, start the webcam, grant permission if prompted, and confirm a
+   moving feed with correct colors and proportions. Resize the window, including
+   its minimum size, and check that both webcam buttons remain visible.
+2. Take Snapshot. Confirm the feed freezes and the camera indicator turns off.
+   Try several operations, Reset, Histogram, and Save As; reopen the saved image.
+3. Start again and use Stop Webcam. Confirm the prior static result returns and
+   the camera turns off. Repeat start/stop and snapshot cycles.
+4. Start without an image, then stop; the empty preview should return. Start with
+   an image and edited parameters; Stop should retain that prior state.
+5. During capture, try Tools, Apply, Reset, and Save As. Expect a reminder and an
+   ongoing feed. Cancel Open, then open a valid image and confirm capture stops.
+6. Test unavailable/denied camera access where possible. Expect an error and a
+   usable application. If using an external camera, disconnect it during capture
+   and check that failure restores the previous image. Reconnect and retry.
+7. Close with capture active using both File → Exit and the window-close button.
+   Confirm the camera indicator turns off and capture can be started after relaunch.
+
 
 ---
 
