@@ -1,14 +1,15 @@
 # Code Documentation
 
 This guide explains how the verified application works, so the student can trace
-the code and explain it during evaluation. It covers **M1–M4**:
+the code and explain it during evaluation. It covers **M1–M5**:
 
 * M1 foundation: commit `3b953a0`.
 * M2 image loading, preview, and saving: commit `b0c57a2`.
 * M3 color and statistics: commit `ccfd624`.
 * M4 filters and applied-result label: user-verified on 2026-09-16.
+* M5 Sobel and Canny edge detection: user-verified on 2026-09-16.
 
-The explanations below describe the verified implementation through M4. Update
+The explanations below describe the verified implementation through M5. Update
 this guide after user verification, before committing future implementation changes.
 
 For installation and manual checks, see [README](../README.md). For verification
@@ -21,19 +22,20 @@ results and milestone status, see the [progress tracker](planning/progress-track
 | `main.py` | Create the Tkinter root, create the application, start the event loop. |
 | `app.py` | Own image state and connect file actions, preview updates, and shutdown. |
 | `gui/layout.py` | Create menus, arrange panels, and return the preview canvas. |
-| `gui/controls.py` | Manage the operation selector, parameter sliders, Apply, and Reset. |
+| `gui/controls.py` | Manage the operation selector, sliders, textboxes, parameter dropdowns, Apply, and Reset. |
 | `processing/color.py` | Grayscale, brightness/contrast, and RGB channel manipulation. |
 | `processing/statistics.py` | Compute intensity histograms and equalize grayscale images. |
 | `processing/filters.py` | Median filtering, Gaussian smoothing, and sharpening. |
-| `utils/validators.py` | Validate finite numbers, ranges, and odd integer filter kernels. |
+| `processing/edges.py` | Sobel mean-ratio thresholding and Canny binary edge maps. |
+| `utils/validators.py` | Validate finite numbers, ranges, odd filter kernels, and edge kernel/aperture choices. |
 | `core/file_handler.py` | Validate file extensions, decode images, and encode/save images. |
 | Package `__init__.py` files | Mark `gui`, `core`, `processing`, and `utils` as regular Python packages. |
 | `requirements.txt` | Declare OpenCV 4.x and NumPy 2.x dependency ranges. |
 | `.gitignore` | Exclude Python cache files and the local `.venv` environment from Git. |
 
 M3 adds color/statistics functions and numeric validation to the previously empty
-packages. M4 adds local filters and textbox validation. Edges, segmentation, and
-webcam belong to later milestones.
+packages. M4 adds local filters and textbox validation. M5 adds edge detection
+and parameter dropdowns. Segmentation and webcam belong to later milestones.
 
 The package markers contain descriptions, not initialization logic. They make
 imports such as `from gui.layout import create_layout` explicit and conventional.
@@ -675,3 +677,110 @@ label still says `Kernel Size: 3` until Apply succeeds. Typing `abc` and pressin
 Apply shows a warning while the kernel-3 result and label remain. Reset retains
 Median Filter in the selector, but correctly labels the displayed pixels as the
 original image rather than claiming that a filter is still applied.
+
+## 21. M5 Controls and Execution Flow
+
+M5 adds `Sobel Edge Detection` and `Canny Edge Detection` to `OPERATIONS`, so both
+appear in the existing Tools menu and operation selector. The application now has
+ten operations. Each new branch in `apply_operation()` calls its function in
+`processing/edges.py` with `current_image` and the selected parameters.
+
+```text
+Select edge method → rebuild controls → apply defaults
+Edit textbox or parameter dropdown → wait for Apply
+Apply → check image → read parameters → validate → compute binary edge map
+    → replace displayed result → update applied label, preview, and histogram
+```
+
+`OperationControls.add_choice(label, name, options, default)` creates a
+`ttk.Combobox` backed by a `StringVar`. It stores that variable in `values` under
+the processing function's parameter name and records the widget in `choices`.
+The dropdown uses `readonly` when an image is loaded and `disabled` otherwise.
+`choose()` clears the old widget lists when rebuilding controls;
+`set_image_loaded()` updates dropdown state alongside entries and sliders.
+
+The edge parameter dropdowns have no processing callback. Like M4 textboxes,
+their edits take effect on Apply. This differs from the live M3 sliders.
+`get_parameters()` returns strings for both edge textboxes and dropdowns.
+
+Reset retains the operation, restores its default controls, and shows a copy of
+the original. It does not immediately run edge detection again. Opening a new
+image clears the operation. Both edge methods always use the loaded original:
+selecting Gaussian Smoothing followed by Canny does not chain the two operations.
+
+## 22. Edge Algorithms: `processing/edges.py`
+
+Both functions accept an unsigned 8-bit grayscale or BGR image. They use the
+existing `grayscale()` helper and return a new two-dimensional `uint8` array with
+the original height and width. Values are 0 for background and 255 for edges.
+The original array is not modified. Existing preview conversion, histogram
+computation, and full-resolution saving already support this representation.
+
+### `sobel_edges(image, kernel_size=3, mean_ratio=1)`
+
+The function validates the kernel and ratio, converts to grayscale, and computes
+horizontal and vertical derivatives with `cv2.Sobel`. The derivative orders are
+`(1, 0)` and `(0, 1)`. Using `cv2.CV_64F` retains negative derivatives and values
+larger than 255; converting to unsigned pixels here would lose information.
+
+`np.hypot(horizontal, vertical)` computes the gradient magnitude:
+
+```text
+magnitude = sqrt(horizontal² + vertical²)
+threshold = mean_ratio × mean(magnitude across the whole image)
+edge pixel = 255 if magnitude > threshold, otherwise 0
+```
+
+The mean is the mean of gradient magnitudes, not the original pixel intensities.
+Thresholding happens before clipping or display conversion. For example, if the
+mean magnitude is 40 and the ratio is 1.5, magnitudes above 60 become white;
+a magnitude exactly equal to 60 remains black.
+
+Both dark-to-light and light-to-dark boundaries can become edges because magnitude
+uses the squared derivatives. Increasing the ratio with the same kernel can only
+retain the same or fewer edge pixels. Ratio zero selects all nonzero gradients.
+On a constant image both derivatives and the threshold are zero; the strict `>`
+comparison keeps the result black rather than marking every pixel as an edge.
+
+### `canny_edges(image, threshold_1=100, threshold_2=200, aperture_size=3)`
+
+The function validates both thresholds and the aperture, checks that threshold 1
+is no greater than threshold 2, then calls `cv2.Canny` on the grayscale image.
+The aperture controls the derivative neighborhood size.
+
+Canny thins gradient responses and uses two thresholds: strong candidates above
+the upper threshold can start edges, while weaker candidates between thresholds
+are retained when connected to strong edges. Isolated weak candidates are removed.
+This is why its output can differ from Sobel's direct magnitude thresholding.
+
+The call leaves `L2gradient` at OpenCV's default `False`, using the L1 gradient
+measure (`|horizontal| + |vertical|`) rather than Sobel's Euclidean magnitude.
+The application adds no Gaussian smoothing step before Canny. Equal thresholds
+are allowed; reversed thresholds are rejected with a clear message rather than
+silently reordered.
+
+## 23. Edge Parameter Validation and Range Choices
+
+| Parameter | Default / accepted values | Reason |
+| --- | --- | --- |
+| Sobel kernel size | 3; choices 3, 5, 7 | Project choice providing a small set of useful derivative neighborhoods. This is not Sobel's full supported range. |
+| Sobel mean ratio | 1; finite numbers 0–10 | One thresholds at the mean gradient magnitude. Zero includes every nonzero gradient. The upper bound is a project demonstration limit, not an OpenCV constraint. |
+| Canny threshold 1 | 100; finite numbers 0–255 | Lower gradient threshold. The range/default are project choices. |
+| Canny threshold 2 | 200; finite numbers 0–255 | Upper gradient threshold; must be at least threshold 1. Gradient magnitudes can exceed 255, so this range is not OpenCV's maximum. |
+| Canny aperture | 3; choices 3, 5, 7 | Matches the supported aperture sizes for this Canny call. Larger apertures change gradient strength and may require different thresholds. |
+
+`validate_edge_size(value, name)` converts the value to stripped text and accepts
+only `"3"`, `"5"`, or `"7"`, returning an integer. It also validates direct function
+calls, even though normal GUI dropdown use already constrains these choices.
+Values such as `3.0`, `4`, empty text, or `abc` raise `ValueError` with the supplied
+parameter name. This validator is separate from M4's odd kernel range of 3–31.
+
+Ratios and thresholds reuse `validate_number()` to reject empty, nonnumeric,
+nonfinite, and out-of-range input. Canny additionally rejects reversed threshold
+ordering. All parameter checks happen before the image-processing calls.
+
+The existing coordinator catches validation errors and shows a warning. It catches
+OpenCV errors separately and shows a processing-failed message. In either case,
+the previous pixels and applied-result label remain intact. Correcting the values
+and pressing Apply retries normally. No image uses the existing no-image warning.
+M5 adds no resource handles or scheduled callbacks requiring additional cleanup.

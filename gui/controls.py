@@ -8,6 +8,7 @@ OPERATIONS = (
     "Grayscale", "Brightness / Contrast", "RGB Channels",
     "Histogram", "Histogram Equalization",
     "Median Filter", "Gaussian Smoothing", "Sharpening",
+    "Sobel Edge Detection", "Canny Edge Detection",
 )
 
 
@@ -18,6 +19,7 @@ class OperationControls:
         self.values = {}
         self.sliders = []
         self.entries = []
+        self.choices = []
         self.operation = tk.StringVar(parent, value="")
         parent.columnconfigure(0, weight=1)
         ttk.Label(parent, text="Operation").grid(row=0, column=0, sticky="w")
@@ -45,6 +47,7 @@ class OperationControls:
         self.values = {}
         self.sliders = []
         self.entries = []
+        self.choices = []
         if operation == "Brightness / Contrast":
             self.add_slider("Brightness", -255, 255, 0, 1)
             self.add_slider("Contrast", 0, 3, 1, 0.05)
@@ -57,6 +60,18 @@ class OperationControls:
         elif operation == "Gaussian Smoothing":
             self.add_entry("Kernel Size (odd: 3–31)", "kernel_size", "5")
             self.add_entry("Sigma (0–10; 0 = automatic)", "sigma", "0")
+            ttk.Label(self.parameters, text="Edit values, then click Apply.").grid(sticky="w")
+        elif operation == "Sobel Edge Detection":
+            self.add_entry("Mean Ratio (0–10)", "mean_ratio", "1")
+            self.add_choice("Kernel Size", "kernel_size", ("3", "5", "7"), "3")
+            ttk.Label(
+                self.parameters, text="Threshold = ratio × mean gradient.\nEdit values, then click Apply.",
+                wraplength=230,
+            ).grid(sticky="w")
+        elif operation == "Canny Edge Detection":
+            self.add_entry("Threshold 1 (low: 0–255)", "threshold_1", "100")
+            self.add_entry("Threshold 2 (high: 0–255)", "threshold_2", "200")
+            self.add_choice("Aperture Size", "aperture_size", ("3", "5", "7"), "3")
             ttk.Label(self.parameters, text="Edit values, then click Apply.").grid(sticky="w")
         else:
             text = {
@@ -100,6 +115,20 @@ class OperationControls:
             slider.configure(state="normal" if loaded else "disabled")
         for entry in self.entries:
             entry.configure(state="normal" if loaded else "disabled")
+        for choice in self.choices:
+            choice.configure(state="readonly" if loaded else "disabled")
+
+    def add_choice(self, label, name, options, default):
+        row = len(self.values) * 2
+        ttk.Label(self.parameters, text=label).grid(row=row, column=0, sticky="w")
+        value = tk.StringVar(self.parameters, value=default)
+        choice = ttk.Combobox(
+            self.parameters, textvariable=value, values=options, width=20,
+            state="readonly" if self.image_loaded else "disabled",
+        )
+        choice.grid(row=row + 1, column=0, sticky="ew", pady=(4, 12))
+        self.values[name] = value
+        self.choices.append(choice)
 
     def get_parameters(self):
         return {name: value.get() for name, value in self.values.items()}

@@ -3,6 +3,14 @@
 import math
 
 
+def validate_edge_size(value, name):
+    """Use a small supported selection for derivative kernels."""
+    text = str(value).strip()
+    if text not in ("3", "5", "7"):
+        raise ValueError(f"{name} must be 3, 5, or 7.")
+    return int(text)
+
+
 def validate_number(value, name, minimum, maximum):
     try:
         number = float(value)

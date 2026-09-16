@@ -11,6 +11,7 @@ from gui.layout import create_layout, create_histogram_window, display_histogram
 from processing.color import grayscale, brightness_contrast, rgb_channels
 from processing.statistics import compute_histogram, equalize_histogram
 from processing.filters import median_filter, gaussian_smoothing, sharpen
+from processing.edges import sobel_edges, canny_edges
 
 
 IMAGE_FILE_TYPES = [
@@ -141,6 +142,10 @@ class ComputerVisionApp:
                 result = gaussian_smoothing(self.current_image, **parameters)
             elif operation == "Sharpening":
                 result = sharpen(self.current_image)
+            elif operation == "Sobel Edge Detection":
+                result = sobel_edges(self.current_image, **parameters)
+            elif operation == "Canny Edge Detection":
+                result = canny_edges(self.current_image, **parameters)
             elif operation == "Histogram":
                 self.show_histogram()
                 return

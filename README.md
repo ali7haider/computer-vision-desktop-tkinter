@@ -726,6 +726,47 @@ while retaining the selected operation, without a confirmation dialog.
 8. Keep Histogram open while applying filters. Resize the main window, save/reopen
    a result, open another image, switch to M3 operations, and exit normally.
 
+## M5 Controls and Manual Verification
+
+Sobel Edge Detection and Canny Edge Detection are available from Tools and the
+Operation dropdown. Selection applies defaults. Edit parameters, then click
+**Apply**; Reset restores the original and defaults while keeping the selection.
+Both methods convert the original to grayscale and return a full-resolution
+binary image: white edges on black. There are now ten operations; segmentation
+and webcam remain future milestones.
+
+| Operation | Parameters | Behavior |
+| --- | --- | --- |
+| Sobel Edge Detection | Kernel dropdown: 3, 5, 7 (default 3); mean ratio textbox: 0–10 (default 1) | Computes horizontal/vertical derivatives and their magnitude. Pixels strictly above `ratio × mean magnitude` become white. |
+| Canny Edge Detection | Threshold 1 textbox: 0–255 (default 100); threshold 2 textbox: 0–255 (default 200); aperture dropdown: 3, 5, 7 (default 3) | Uses a lower and upper gradient threshold to retain strong edges and connected weak edges. Threshold 1 must be ≤ threshold 2. |
+
+Sobel thresholds the floating-point gradient magnitude before any clipping or
+display conversion. Increasing its ratio retains fewer edges; zero retains all
+nonzero gradients. Constant images remain black. The ratio range and Sobel kernel
+selection are project choices for a manageable demonstration, not OpenCV limits.
+Canny's 3/5/7 aperture selection follows its supported derivative sizes. Its
+0–255 threshold range is a project choice, not a limit on gradient magnitudes;
+larger apertures can change gradient strength substantially. No additional blur
+is applied by the application. Both methods start from the original, so selecting
+Gaussian Smoothing first does not create a processing chain.
+
+1. Before loading an image, select both edge methods. Expect a warning and disabled
+   parameter controls.
+2. Open an image with clear boundaries. Try Sobel kernels 3, 5, and 7 and ratios
+   0, 1, 2, and 10. Try an image with uniform color; it should remain black.
+3. For Sobel ratio, try empty input, `abc`, `-1`, `11`, `nan`, and `inf`. Expect a
+   warning with the previous result and applied-result label preserved.
+4. Try Canny at 100/200, 0/255, and equal thresholds, with each aperture size.
+   Try empty input, `abc`, `-1`, `256`, `nan`, and `inf` in each threshold field,
+   then try threshold 1 greater than threshold 2. Expect clear warnings.
+5. Correct invalid values and Apply again. Repeat Apply and verify the result does
+   not accumulate changes. Edit parameters without Apply; the applied label stays.
+6. Reset each method: the original returns, selection stays, and defaults return.
+   Apply again. Keep Histogram open and check it updates with the edge result.
+7. Save each result as PNG and reopen it to check full dimensions and appearance.
+   Resize to the minimum window size, switch to earlier operations, open another
+   image, and close normally.
+
 Webcam access, when implemented, will require the operating system to grant camera permission to Python/Terminal.
 
 ---

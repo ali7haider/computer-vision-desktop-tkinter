@@ -18,9 +18,11 @@ has been updated for the verified implementation.
 
 **M4 — Filters + Local Operators: complete, including the applied-result label.**
 
+**M5 — Edge Detection: complete.**
+
 ## Current Task
 
-M4 is verified and documented. User will create the commit and push; M5 is next.
+M5 is user-verified and documented. User will create the commit; M6 is next.
 
 ## Completed
 
@@ -143,6 +145,32 @@ were added. Webcam remains disabled until M7.
 
 No feature implementation in progress.
 
+### M5 — Edge Detection: Complete
+
+User confirmed M5 works on 2026-09-16. Individual manual test results were not recorded.
+
+* Added Sobel and Canny in `processing/edges.py`; ten operations are available.
+* Sobel uses signed horizontal/vertical derivatives and thresholds their magnitude
+  strictly above `mean_ratio × mean magnitude`, producing a binary uint8 image.
+  Kernel choices are 3/5/7; mean ratio accepts finite values 0–10 (default 1).
+* Canny exposes threshold 1/2 textboxes (0–255, defaults 100/200) and an aperture
+  dropdown (3/5/7, default 3). Threshold 1 must not exceed threshold 2.
+* Selection applies defaults. Edited controls run on Apply. Reset restores the
+  original/defaults while retaining the operation. Invalid input preserves the
+  previous result and applied-result label. Parameters are disabled without an image.
+* 165 M5 checks passed: independent 3×3 Sobel kernel calculation, both edge
+  polarities/directions, ratio behavior, Canny edge localization, constant/tiny
+  images, supported sizes, boundaries, invalid/nonfinite inputs, no-image handling,
+  repeated Apply, Reset, simulated OpenCV errors, histogram integration,
+  full-resolution PNG saving, new-image loading, and callback cleanup.
+* Real Tk controls fit at 700×450, 1000×650, and 1200×800. GUI actions were driven
+  programmatically; file dialogs and error messages were simulated.
+* All 111 M4 and 139 M3 regression checks passed. All 14 Python files passed syntax
+  parsing; whitespace checks passed. No dependencies were added.
+* README now includes parameter choices, algorithm behavior, and manual steps.
+  Code documentation now covers the verified M5 controls, execution flow, edge
+  algorithms, validation, image representation, and parameter-range rationale.
+
 ### M4 — Filters + Local Operators: Complete
 
 User confirmed the filters and applied-result label work on 2026-09-16.
@@ -184,7 +212,6 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Pending
 
-* M5: Edge detection.
 * M6: Segmentation.
 * M7: Webcam and snapshot.
 * M8: Integration and stability.
@@ -194,10 +221,16 @@ See `build-plan.md` for milestone scopes.
 
 ## Next Steps
 
-1. User commits and pushes the verified M4 changes.
-2. Proceed to M5 — Edge Detection when requested.
+1. User commits the verified and documented M5 changes.
+2. Proceed to M6 — Segmentation when requested.
 
 ## Recent Changes
+
+* Marked M5 complete after user confirmation and updated code documentation.
+
+* Implemented and automatically verified M5 Sobel/Canny edge detection.
+* Restored the committed build plan at the user's request after finding an
+  uncommitted empty template in its place.
 
 * Marked M4 complete after user verification and documented range choices,
   distinguishing OpenCV constraints from practical project limits.
