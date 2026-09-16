@@ -16,9 +16,11 @@ continuous preview updates during resizing.
 User confirmed M3 works, including the revised Reset behavior. Code documentation
 has been updated for the verified implementation.
 
+**M4 — Filters + Local Operators: complete, including the applied-result label.**
+
 ## Current Task
 
-Commit the completed M3 implementation and documentation. M4 is next.
+M4 is verified and documented. User will create the commit and push; M5 is next.
 
 ## Completed
 
@@ -139,7 +141,32 @@ were added. Webcam remains disabled until M7.
 
 ## In Progress
 
-No feature implementation in progress. M3 is complete; M4 has not started.
+No feature implementation in progress.
+
+### M4 — Filters + Local Operators: Complete
+
+User confirmed the filters and applied-result label work on 2026-09-16.
+
+* Added median filtering, Gaussian smoothing, and fixed-kernel sharpening in
+  `processing/filters.py`; eight operations are now available.
+* Added kernel/sigma textboxes. Selection applies defaults; edited values run on Apply.
+* Kernel validation accepts odd integers 3–31; sigma accepts finite numbers 0–10.
+  Sigma 0 uses OpenCV's automatic choice. Invalid input preserves the displayed result.
+* Reset keeps the operation, restores defaults and original pixels, and shows no prompt.
+* Added a preview label showing the applied operation and parameter values.
+  Open/Reset identify the original; pending edits, failed Apply, and histogram
+  viewing preserve the label describing the displayed pixels.
+* Focused GUI status checks passed for empty/original/applied states, parameter
+  edits, invalid input, histogram, Reset, live sliders, and minimum window size.
+* 111 M4 algorithm/GUI checks passed: known pixel cases, constant/tiny images,
+  parameter boundaries, invalid inputs, disabled entries without an image,
+  repeated use, Reset, histogram integration, and minimum-window layout.
+* 137 M3/integration regression checks passed after adding the new operations.
+* All 13 Python files passed syntax parsing; whitespace checks passed.
+* Dialogs were simulated and GUI controls driven programmatically. User manual
+  verification is confirmed; individual manual results were not recorded.
+* Code documentation now covers filters, textbox flow, validation, parameter-range
+  rationale, and the applied-result label.
 
 ## Blocked / Known Issues
 
@@ -157,7 +184,6 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Pending
 
-* M4: Filters and local operators.
 * M5: Edge detection.
 * M6: Segmentation.
 * M7: Webcam and snapshot.
@@ -168,10 +194,15 @@ See `build-plan.md` for milestone scopes.
 
 ## Next Steps
 
-1. Commit M3; user handles the push.
-2. Proceed to M4 — Filters + Local Operators when requested.
+1. User commits and pushes the verified M4 changes.
+2. Proceed to M5 — Edge Detection when requested.
 
 ## Recent Changes
+
+* Marked M4 complete after user verification and documented range choices,
+  distinguishing OpenCV constraints from practical project limits.
+
+* Implemented M4 filters, textbox controls, validation, and manual checklist.
 
 * Marked M3 complete after user verification and updated code documentation,
   including live controls, algorithms, histogram lifecycle, and Reset behavior.
@@ -192,4 +223,4 @@ See `build-plan.md` for milestone scopes.
 
 ## Last Updated
 
-2026-09-15
+2026-09-16

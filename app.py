@@ -10,6 +10,7 @@ from gui.controls import OperationControls
 from gui.layout import create_layout, create_histogram_window, display_histogram
 from processing.color import grayscale, brightness_contrast, rgb_channels
 from processing.statistics import compute_histogram, equalize_histogram
+from processing.filters import median_filter, gaussian_smoothing, sharpen
 
 
 IMAGE_FILE_TYPES = [
@@ -31,9 +32,10 @@ class ComputerVisionApp:
         self.resize_job = None
         self.processing_job = None
         self.histogram_canvas = None
+        self.preview_status = tk.StringVar(self.root, value="No image loaded")
         self.preview, controls_panel = create_layout(
             self.root, self.close, self.open_image, self.save_image,
-            self.select_operation, self.reset_image,
+            self.select_operation, self.reset_image, self.preview_status,
         )
         self.controls = OperationControls(
             controls_panel, self.select_operation, self.apply_operation,
@@ -133,6 +135,12 @@ class ComputerVisionApp:
                 result = rgb_channels(self.current_image, **parameters)
             elif operation == "Histogram Equalization":
                 result = equalize_histogram(self.current_image)
+            elif operation == "Median Filter":
+                result = median_filter(self.current_image, **parameters)
+            elif operation == "Gaussian Smoothing":
+                result = gaussian_smoothing(self.current_image, **parameters)
+            elif operation == "Sharpening":
+                result = sharpen(self.current_image)
             elif operation == "Histogram":
                 self.show_histogram()
                 return
@@ -145,6 +153,14 @@ class ComputerVisionApp:
             messagebox.showerror("Processing Failed", "Could not process this image.", parent=self.root)
             return
         self.display_image = result
+        status = f"Applied: {operation}"
+        if parameters:
+            settings = ", ".join(
+                f"{name.replace('_', ' ').title()}: {float(value):g}"
+                for name, value in parameters.items()
+            )
+            status += f"\n{settings}"
+        self.preview_status.set(status)
         self.refresh_preview()
         self.update_histogram()
 
@@ -154,6 +170,7 @@ class ComputerVisionApp:
             return
         self.controls.choose(self.controls.operation.get())
         self.display_image = self.current_image.copy()
+        self.preview_status.set("Original image — no operation applied")
         self.refresh_preview()
         self.update_histogram()
 

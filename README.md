@@ -684,6 +684,48 @@ result, not the histogram graph.
 Algorithm references: OpenCV's [brightness/contrast tutorial](https://docs.opencv.org/4.x/d3/dc1/tutorial_basic_linear_transform.html)
 and [histogram equalization tutorial](https://docs.opencv.org/4.x/d4/d1b/tutorial_histogram_equalization.html).
 
+## M4 Controls and Manual Verification
+
+M4 and the applied-result label are user-verified. Keep this checklist for future
+regression checks. Range-selection rationale is in
+[Code Documentation](context/code-documentation.md#19-why-these-parameter-ranges).
+
+Three more operations are available in Tools and the Operation dropdown. Selecting
+one applies its defaults. Edit textbox values and click **Apply** to run again;
+typing alone does not process the image or interrupt you with warnings.
+
+The label above the preview identifies the **applied operation and parameter
+values**. Editing text does not change that label until Apply succeeds. Invalid
+input leaves the prior result and label intact. Open/Reset show **Original image —
+no operation applied**; viewing a histogram keeps the image's existing label.
+
+| Operation | Parameters | Behavior |
+| --- | --- | --- |
+| Median Filter | Kernel size: odd integer 3–31, default 3 | Replaces each pixel with the neighborhood median; useful for isolated speckle noise. |
+| Gaussian Smoothing | Kernel size: odd integer 3–31, default 5; sigma: 0–10, default 0 | Weighted local smoothing. Sigma 0 lets OpenCV derive sigma from the kernel size. |
+| Sharpening | Fixed 3×3 kernel, no parameters | Emphasizes local differences using center weight 5 and four neighboring weights −1. |
+
+The kernel limit keeps interactive processing practical. Larger kernels generally
+smooth more; sigma controls Gaussian spread within the selected kernel. Sharpening
+may also emphasize noise. All operations use the loaded original, preserve full
+dimensions, and can be saved. Reset restores the original and default parameters
+while retaining the selected operation, without a confirmation dialog.
+
+1. Before loading an image, select each filter. Expect a warning and disabled textboxes.
+2. Open a detailed/noisy image. Try Median Filter with kernels 3, 5, and 31.
+3. Try Gaussian Smoothing with kernels 3, 5, and 31, and sigma 0, 1, and 10.
+   Edit text and confirm the result changes only after Apply.
+4. For both kernel fields try empty input, `abc`, `0`, `-1`, `1`, `4`, `3.5`, and
+   `999`. Each should show a clear warning and preserve the previous result.
+5. For sigma try empty input, `abc`, `-1`, `11`, `nan`, and `inf`. Expect warnings.
+   Then enter valid values and confirm processing still works.
+6. Try Sharpening and repeat Apply. The result should not become progressively
+   sharper because each application starts from the original.
+7. Change filter parameters, then Reset. Verify the operation stays selected,
+   defaults return, and the original reappears. Apply should run the filter again.
+8. Keep Histogram open while applying filters. Resize the main window, save/reopen
+   a result, open another image, switch to M3 operations, and exit normally.
+
 Webcam access, when implemented, will require the operating system to grant camera permission to Python/Terminal.
 
 ---

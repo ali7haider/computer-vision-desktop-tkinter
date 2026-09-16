@@ -6,7 +6,7 @@ from tkinter import ttk
 from gui.controls import OPERATIONS
 
 
-def create_layout(root, on_exit, on_open, on_save, on_select, on_reset):
+def create_layout(root, on_exit, on_open, on_save, on_select, on_reset, preview_status):
     menu_bar = tk.Menu(root)
     file_menu = tk.Menu(menu_bar, tearoff=False)
     file_menu.add_command(label="Open...", command=on_open)
@@ -36,12 +36,15 @@ def create_layout(root, on_exit, on_open, on_save, on_select, on_reset):
 
     preview = ttk.LabelFrame(content, text="Image Preview", padding=12)
     preview.grid(row=0, column=1, sticky="nsew")
-    preview.rowconfigure(0, weight=1)
+    preview.rowconfigure(1, weight=1)
     preview.columnconfigure(0, weight=1)
+    ttk.Label(preview, textvariable=preview_status, wraplength=260).grid(
+        row=0, column=0, sticky="w", pady=(0, 8)
+    )
     canvas = tk.Canvas(
         preview, background="#FFFFFF", highlightthickness=0, width=1, height=1
     )
-    canvas.grid(row=0, column=0, sticky="nsew")
+    canvas.grid(row=1, column=0, sticky="nsew")
     return canvas, controls
 
 

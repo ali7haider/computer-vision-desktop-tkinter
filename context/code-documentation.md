@@ -1,13 +1,14 @@
 # Code Documentation
 
 This guide explains how the verified application works, so the student can trace
-the code and explain it during evaluation. It covers **M1, M2, and M3**:
+the code and explain it during evaluation. It covers **M1–M4**:
 
 * M1 foundation: commit `3b953a0`.
 * M2 image loading, preview, and saving: commit `b0c57a2`.
-* M3 color and statistics: user-verified, including the revised Reset behavior.
+* M3 color and statistics: commit `ccfd624`.
+* M4 filters and applied-result label: user-verified on 2026-09-16.
 
-The explanations below describe the verified implementation through M3. Update
+The explanations below describe the verified implementation through M4. Update
 this guide after user verification, before committing future implementation changes.
 
 For installation and manual checks, see [README](../README.md). For verification
@@ -23,14 +24,16 @@ results and milestone status, see the [progress tracker](planning/progress-track
 | `gui/controls.py` | Manage the operation selector, parameter sliders, Apply, and Reset. |
 | `processing/color.py` | Grayscale, brightness/contrast, and RGB channel manipulation. |
 | `processing/statistics.py` | Compute intensity histograms and equalize grayscale images. |
-| `utils/validators.py` | Validate finite numeric values and inclusive ranges. |
+| `processing/filters.py` | Median filtering, Gaussian smoothing, and sharpening. |
+| `utils/validators.py` | Validate finite numbers, ranges, and odd integer filter kernels. |
 | `core/file_handler.py` | Validate file extensions, decode images, and encode/save images. |
 | Package `__init__.py` files | Mark `gui`, `core`, `processing`, and `utils` as regular Python packages. |
 | `requirements.txt` | Declare OpenCV 4.x and NumPy 2.x dependency ranges. |
 | `.gitignore` | Exclude Python cache files and the local `.venv` environment from Git. |
 
 M3 adds color/statistics functions and numeric validation to the previously empty
-packages. Filters, edges, segmentation, and webcam belong to later milestones.
+packages. M4 adds local filters and textbox validation. Edges, segmentation, and
+webcam belong to later milestones.
 
 The package markers contain descriptions, not initialization logic. They make
 imports such as `from gui.layout import create_layout` explicit and conventional.
@@ -81,6 +84,7 @@ The constructor sets the title, initial size (`1000×650`), and minimum size
 | `processing_job` | `None` | Identifier of a scheduled slider-driven operation. |
 | `histogram_canvas` | `None` | Canvas in the optional histogram window. |
 | `controls` | `OperationControls` instance | Owns selector and parameter widgets/variables. |
+| `preview_status` | `StringVar` saying “No image loaded” | Describes the actual displayed result, independently of selected/edited controls. |
 
 The constructor also binds canvas `<Configure>` events to `schedule_preview` and
 the window-close protocol `WM_DELETE_WINDOW` to `close`.
@@ -116,14 +120,14 @@ preserved. M2 saves pixel content, not original file metadata.
 
 ## 4. GUI Construction
 
-### `gui/layout.py`: `create_layout(root, on_exit, on_open, on_save, on_select, on_reset)`
+### `gui/layout.py`: `create_layout(root, on_exit, on_open, on_save, on_select, on_reset, preview_status)`
 
 This function creates the File and Tools menus and attaches the menu bar with
 `root.configure(menu=menu_bar)`.
 
-At the end of M3:
+At the end of M4:
 
-* Open, Save As, Exit, all five operations, and Reset have callbacks.
+* Open, Save As, Exit, all eight operations, and Reset have callbacks.
 * Webcam remains disabled.
 
 The Tools menu loops through `OPERATIONS`. Its callback uses `lambda name=operation`
@@ -153,7 +157,9 @@ application coordinator. It does not process images.
 * `choose(operation)` rebuilds only the relevant parameter controls with defaults.
 * `add_slider(...)` creates a labeled `Scale` backed by a `DoubleVar`.
 * `values` maps parameter names to those variables; `sliders` stores widget references.
-* `set_image_loaded(loaded)` enables/disables sliders.
+* `add_entry(...)` creates a labeled textbox backed by a `StringVar`.
+* `entries` stores textbox widgets, alongside `sliders`.
+* `set_image_loaded(loaded)` enables/disables sliders and entries.
 * `get_parameters()` returns numeric keyword arguments for processing functions.
 
 Dropdown selection invokes the coordinator's selection callback. Slider movement
@@ -333,7 +339,7 @@ identifiers, and calls `root.destroy()`.
 
 Cancelling first prevents delayed code from trying to redraw destroyed widgets.
 Destroying the root closes the main window and any histogram child window, then
-lets `mainloop()` return. No camera is opened through M3, so there are no webcam
+lets `mainloop()` return. No camera is opened through M4, so there are no webcam
 resources to release yet.
 
 ## 11. Walkthrough to Explain During Evaluation
@@ -521,3 +527,151 @@ The coordinator handles:
 The result is assigned to `display_image` only after the selected image operation
 succeeds. These errors therefore preserve the prior result. Programming errors
 outside the expected cases are not hidden by a catch-all exception handler.
+
+## 17. M4 Filter Controls and Execution Flow
+
+M4 adds Median Filter, Gaussian Smoothing, and Sharpening to `OPERATIONS`. The
+existing menu and dropdown automatically include these names. `apply_operation()`
+has a branch for each new function in `processing/filters.py`.
+
+```text
+Select filter → build default controls → apply defaults
+Edit textbox → retain text without processing
+Click Apply → read strings → validate → filter original → replace result
+    → set applied-result label → refresh preview and any open histogram
+```
+
+`OperationControls.add_entry(label, name, default)` creates a `ttk.Entry` backed
+by a `StringVar` and stores it in `values` under the function parameter name.
+For example, `kernel_size` maps directly to the processing function's argument.
+`get_parameters()` returns strings for textboxes and numbers for sliders.
+
+Using `StringVar` allows incomplete or invalid text to exist while the user is
+editing. Validation happens on Apply, so deleting a value temporarily does not
+trigger a warning. Textbox edits have no live-processing callback. Selection
+still applies the default filter immediately, consistent with other operations.
+
+Reset rebuilds the selected operation's controls with defaults and restores the
+original pixels. It does not reapply the filter until Apply is pressed. Gaussian
+Reset restores kernel `5` and sigma `0`; Median Reset restores kernel `3`.
+
+## 18. Filter Algorithms: `processing/filters.py`
+
+### `median_filter(image, kernel_size=3)`
+
+Validate the kernel, then call `cv2.medianBlur(image, kernel)`. Each output channel
+value is the median of its local square neighborhood. This can remove isolated
+bright/dark noise while retaining edges better than averaging in many cases.
+
+For example, a 3×3 neighborhood with eight zeros and one 255 has median zero.
+A constant image remains constant. OpenCV handles image boundaries internally;
+the output retains the input dimensions and uint8 type.
+
+### `gaussian_smoothing(image, kernel_size=5, sigma=0)`
+
+Validate the kernel and sigma, then call:
+
+```python
+cv2.GaussianBlur(image, (kernel, kernel), sigmaX=sigma)
+```
+
+This computes a weighted local average, with larger weights near the center.
+The square kernel sets the neighborhood size; sigma controls how broadly the
+weights spread within it. The omitted vertical sigma follows the horizontal
+sigma. Sigma zero asks OpenCV to derive the spread from the kernel size.
+
+For example, smoothing a single bright pixel on a black background lowers its
+peak and spreads brightness into neighboring pixels. A constant image stays
+constant. Increasing sigma with a fixed small kernel has limited effect because
+the neighborhood still contains the same small number of pixels.
+
+### `sharpen(image)`
+
+The fixed kernel is:
+
+```text
+ 0  -1   0
+-1   5  -1
+ 0  -1   0
+```
+
+`cv2.filter2D(image, -1, kernel)` applies it independently to image channels.
+The `-1` preserves the input depth; results outside uint8 range saturate to 0 or
+255. The center is amplified and its four immediate neighbors are subtracted.
+The weights sum to one, so constant areas remain unchanged.
+
+**Example:** a center value of 120 surrounded by four values of 100 becomes
+`5 × 120 − 4 × 100 = 200`. A neighboring 100 next to that center becomes 80,
+emphasizing their difference. Sharpening can also amplify noise and cause halos.
+There is no adjustable strength parameter in M4.
+
+All three functions return a new image. The application passes the loaded
+original to them, so repeated Apply does not compound filtering.
+
+## 19. Why These Parameter Ranges?
+
+The assignment requires valid, documented parameters and safe invalid-input
+handling. It does **not** specify the exact upper limits used here.
+
+| Parameter/rule | Reason and whether it is a requirement or a project choice |
+| --- | --- |
+| Odd kernel dimensions | Required by the selected OpenCV median/Gaussian calls with explicit square kernels; odd sizes have a center pixel and symmetric neighbors. |
+| Minimum kernel 3 | Project choice: 3×3 is the smallest useful smoothing neighborhood. A 1×1 neighborhood would leave the image unchanged. |
+| Maximum kernel 31 | Project choice: bounds the neighborhood and processing work, especially for median filtering, while allowing a broad demonstration range. It is not an OpenCV maximum. |
+| Median default 3 | Starts with mild filtering and a small neighborhood, making its effect easy to compare with the original. |
+| Gaussian default 5 | Provides a modest, visible smoothing neighborhood without beginning at an extreme blur. |
+| Sigma 0 | Supported automatic mode: OpenCV derives sigma from kernel size. It is also the default so users can start by changing only the kernel. |
+| Positive sigma up to 10 | Project choice: gives a useful finite adjustment range alongside kernels up to 31. Ten is not an OpenCV maximum and is not universally optimal for every image. |
+| Reject negative/nonfinite sigma | The UI exposes automatic zero or positive spread only. Negative values have no useful standard-deviation meaning in this interface; NaN and infinity are rejected before OpenCV. |
+
+The upper bounds are practical starting policies, **not benchmark-derived
+performance thresholds** or guarantees that every image size will process quickly.
+A kernel of 31 uses a 31×31 neighborhood, compared with 3×3 for the minimum.
+Larger neighborhoods generally require more work, but exact cost depends on the
+algorithm and image dimensions. These limits can be revised if a real use case
+requires it; validation, labels, documentation, and boundary checks must then agree.
+
+### Kernel validation details
+
+`validate_kernel_size(value)` strips surrounding whitespace and accepts ASCII
+decimal digits only. It rejects more than two digits before integer conversion,
+then enforces 3–31 and odd parity. This avoids sending decimal fractions, negative
+values, even values, or enormous strings to OpenCV.
+
+The current text format intentionally rejects `3.0`, `+3`, and `003`; users should
+enter a simple integer such as `3`. `03` is accepted. All invalid cases use the
+same clear message: “Kernel size must be an odd integer from 3 to 31.”
+Sigma uses `validate_number`, which accepts numeric text and checks finite values
+and the inclusive range 0–10. On failure, the coordinator warns and retains the
+previous result. Correcting the input and pressing Apply works normally afterward.
+
+## 20. Applied-Result Label
+
+The selected operation and edited parameters are not necessarily the operation
+and values that produced the visible image. `preview_status` explicitly records
+what is currently displayed.
+
+`create_layout` receives this `StringVar` and connects it to a label above the
+preview canvas. The label occupies row 0; the expanding canvas occupies row 1.
+The text wraps so it remains readable in a narrow window.
+
+| Event | Label behavior |
+| --- | --- |
+| Launch | `No image loaded` |
+| Successful Open or Reset | `Original image — no operation applied` |
+| Successful processing | `Applied: <operation>` plus the actual applied parameter values |
+| Textbox edit without Apply | Retain the previous applied label |
+| Invalid input or failed processing | Retain the previous applied label and pixels |
+| Live slider update | Update the label when the new result is produced |
+| Histogram selection | Keep the image's label, since the histogram does not change its pixels |
+
+After a successful image-changing operation, `apply_operation()` builds the label
+from the operation name and the captured parameters. Underscores become spaces,
+parameter names use title case, and numeric values use compact `:g` formatting.
+The label changes only after validation and processing succeed.
+
+**Example:** Median Filter is applied with kernel 3, then the user types 5. The
+label still says `Kernel Size: 3` until Apply succeeds. Typing `abc` and pressing
+Apply shows a warning while the kernel-3 result and label remain. Reset retains
+Median Filter in the selector, but correctly labels the displayed pixels as the
+original image rather than claiming that a filter is still applied.
