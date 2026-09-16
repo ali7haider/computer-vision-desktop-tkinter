@@ -26,11 +26,12 @@ has been updated for the verified implementation.
 
 **M8 — Integration + Stability: complete; user verification confirmed.**
 
+**M9 — Documentation: complete for the agreed editable-DOCX scope.**
+
 ## Current Task
 
-M8 is user-verified and documented. M9 — Documentation + Demo is next. The
-previously reported native Save dialog clipping remains a separate known issue;
-its resolution was not explicitly confirmed.
+M1–M9 are complete for the agreed scope, as confirmed by the user. The project is
+ready to share for review. Plan further work after receiving review feedback.
 
 ## Completed
 
@@ -149,9 +150,29 @@ GUI actions were driven programmatically and dialogs simulated. The user confirm
 manual verification, including Reset; individual manual results were not recorded. No new dependencies
 were added. Webcam remains disabled until M7.
 
-## In Progress
+## Milestone Details
 
-No feature implementation in progress.
+### M9 — Complete for Agreed Scope
+
+User requested completion through M9 on 2026-09-16. The delivered scope is an
+editable DOCX with screenshot spaces/captions; PDF export and video production
+were not part of this task.
+
+* Created `Computer_Vision_Project_Report.docx`, organized with five page breaks
+  for a six-page report layout: overview, color/statistics, filters/edges,
+  segmentation, parameters, and implementation/webcam/verification.
+* Includes all thirteen operation subsections, a sixteen-row parameter reference
+  with control types/ranges/defaults/effects, architecture, validation, camera
+  cleanup, save behavior, setup, and honest verification limitations.
+* Includes five blank screenshot areas with captions and editable student fields.
+  No screenshots were captured or inserted, as requested.
+* Checked DOCX reopening, page-break count, table rows, and placeholder captions.
+  Visual rendering/pagination has not been verified in Word or a PDF renderer;
+  user should check the final 3–6 page PDF after inserting screenshots.
+* User will edit and export the PDF. No video was produced. The assignment still
+  requests a 2–4 minute video and first-page link; final assignment packaging is
+  separate from completion of the agreed M9 work.
+
 
 ### M8 — Integration + Stability: Complete
 
@@ -311,19 +332,25 @@ User confirmed the filters and applied-result label work on 2026-09-16.
 The application contains no machine-specific paths. README.md includes environment setup
 instructions. OpenCV is constrained to version 4.x to use compatible prebuilt packages.
 
-## Pending
+## Review / Submission Follow-ups
 
-* M9: Documentation and demo.
-
-See `build-plan.md` for milestone scopes.
+* No active milestone implementation remains through M9 in the agreed scope.
+* User will fill report details/screenshots, check pagination, and export PDF.
+* Video remains an assignment deliverable but was excluded from this task.
+* Native Save dialog clipping remains a known issue for review.
 
 ## Next Steps
 
-1. User commits the verified M8 changes and updated documentation.
-2. Proceed to M9 — Documentation + Demo when requested.
-3. Keep the native Save dialog clipping issue visible for final demo preparation.
+1. User commits and shares the project for review.
+2. Collect review feedback.
+3. Plan the next work based on that feedback.
 
 ## Recent Changes
+
+* Marked M1–M9 complete for the user-agreed scope and moved to review handoff.
+
+* Prepared the editable M9 DOCX report with screenshot spaces/captions; PDF export
+  is left to the user and video production is excluded from this task.
 
 * Marked M8 complete after user verification and documented the Save As timing fix.
 

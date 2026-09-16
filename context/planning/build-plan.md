@@ -24,10 +24,12 @@ The priority is:
 
 ## Current Phase
 
-**Phase: M8 complete — ready for M9 Documentation + Demo**
+**Phase: M1–M9 complete for agreed scope — ready for review**
 
-M1–M8 are implemented and user verification is confirmed. Prepare documentation
-and demo materials next; retain known UI follow-ups in the progress tracker.
+M1–M8 are implemented and user verification is confirmed. M9 is complete for the
+requested editable DOCX with screenshot placeholders. The user will export the PDF;
+video work was excluded. Share the project for review, then plan further work from
+feedback. Original assignment submission requirements remain below.
 
 ---
 

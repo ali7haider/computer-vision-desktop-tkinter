@@ -998,3 +998,21 @@ The goal is to demonstrate understanding of:
 The final application should therefore be:
 
 **Simple, structured, stable, understandable, and complete enough to satisfy the assignment requirements.**
+
+
+## Editable M9 Report
+
+[Computer Vision Project Report](Computer_Vision_Project_Report.docx) contains
+all thirteen operations, parameter controls/ranges/effects, implementation notes,
+and five screenshot placeholders with captions. Replace the student details and
+placeholder content, then export to PDF from Word or a compatible editor.
+
+The report is arranged into six planned pages. After inserting screenshots, check
+page breaks, table layout, and the assignment's 3–6 page limit. No video is included
+in this task; the assignment separately requires a 2–4 minute demo and its link on
+the first PDF page. The native macOS Save dialog clipping issue remains recorded.
+
+Project status: **M1–M9 complete for the agreed scope; ready for review.**
+M9 delivers the editable DOCX and screenshot placeholders. Final screenshot
+insertion/PDF export remain with the user; video was excluded from this task.
+Further development will be planned after review feedback.
