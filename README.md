@@ -732,8 +732,8 @@ Sobel Edge Detection and Canny Edge Detection are available from Tools and the
 Operation dropdown. Selection applies defaults. Edit parameters, then click
 **Apply**; Reset restores the original and defaults while keeping the selection.
 Both methods convert the original to grayscale and return a full-resolution
-binary image: white edges on black. There are now ten operations; segmentation
-and webcam remain future milestones.
+binary image: white edges on black. M5 brings the operation count to ten;
+M6 adds the three segmentation operations described below. Webcam remains planned.
 
 | Operation | Parameters | Behavior |
 | --- | --- | --- |
@@ -766,6 +766,50 @@ Gaussian Smoothing first does not create a processing chain.
 7. Save each result as PNG and reopen it to check full dimensions and appearance.
    Resize to the minimum window size, switch to earlier operations, open another
    image, and close normally.
+
+## M6 Controls and Manual Verification
+
+Three segmentation operations bring the total to thirteen. Select one from Tools
+or the Operation dropdown to apply its defaults. Each starts from the loaded
+original; operations do not accumulate. Reset restores the original/defaults and
+retains the operation. Invalid input preserves the displayed result and its label.
+
+| Operation | Controls | Result |
+| --- | --- | --- |
+| Global Thresholding | Live threshold slider 0–255, default 127 | Grayscale intensities strictly greater than the threshold become white; the rest become black. |
+| Adaptive Thresholding | Odd block size 3–31, default 11; constant C −50–50, default 2; Mean/Gaussian dropdown, default Gaussian; Apply to process | Binary mask using each pixel's local mean or Gaussian-weighted neighborhood value minus C as its threshold. |
+| Contour Detection | Live threshold slider 0–255, default 127 | Thresholds grayscale, then draws external boundaries of bright foreground regions in green, two pixels thick, on a copy of the original. |
+
+Adaptive block size defines a square neighborhood. OpenCV requires an odd size
+greater than one; the maximum of 31 is a project choice. C's −50–50 range is also a
+project choice: increasing C lowers the local threshold and generally makes more
+pixels white. Negative C raises it. OpenCV supports fractional C with integer-pixel
+rounding, so very small changes may give the same mask. Border pixels are replicated
+to extend neighborhoods, including when the block is larger than the image.
+
+Contour Detection uses the same global threshold rule internally. Dark objects
+on a bright background may instead yield an outline of the surrounding bright
+region. Holes are not outlined, and no size filtering is applied. If there is no
+foreground, the original is returned without outlines. Grayscale originals are
+converted to BGR for the green overlay. Saving retains full dimensions; threshold
+masks are grayscale and contour results are color images.
+
+1. Before opening an image, select each new operation. Expect a warning and disabled
+   parameter controls.
+2. Open a detailed image. Move the Global Thresholding slider, including 0, 127,
+   and 255. The display should update live; 255 should produce an all-black mask.
+3. Try Adaptive Thresholding on uneven lighting. Apply both methods with blocks
+   3, 11, and 31 and C values −50, 0, 2, and 50. The label should show the applied
+   method and values. Edits alone should not change the result or its label.
+4. For block size try empty input, `abc`, `0`, `-1`, `1`, `4`, `3.5`, and `33`.
+   For C try empty input, `abc`, `-51`, `51`, `nan`, and `inf`. Expect clear warnings
+   and the previous result to remain. Correct the values and Apply successfully.
+5. Try Contour Detection on bright shapes against a dark background. Adjust the
+   threshold and observe green outer boundaries. At 255 there should be no outlines.
+6. Repeat Apply, Reset, and operation switching. Keep Histogram open and check that
+   it updates. Try tiny and uniform images and the minimum window size.
+7. Save/reopen each result as PNG; check dimensions and appearance. Open another
+   image to clear the operation, then close after moving a live threshold slider.
 
 Webcam access, when implemented, will require the operating system to grant camera permission to Python/Terminal.
 

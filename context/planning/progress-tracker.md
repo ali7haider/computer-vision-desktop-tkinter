@@ -20,9 +20,11 @@ has been updated for the verified implementation.
 
 **M5 — Edge Detection: complete.**
 
+**M6 — Segmentation: complete.**
+
 ## Current Task
 
-M5 is user-verified and documented. User will create the commit; M6 is next.
+M6 is user-verified and documented. User will create the commit; M7 is next.
 
 ## Completed
 
@@ -145,6 +147,35 @@ were added. Webcam remains disabled until M7.
 
 No feature implementation in progress.
 
+### M6 — Segmentation: Complete
+
+User confirmed M6 works on 2026-09-16. Individual manual test results were not recorded.
+
+* Added global thresholding, adaptive thresholding, and contour detection in
+  `processing/segmentation.py`; thirteen operations are now available.
+* Global thresholding uses a live 0–255 slider (default 127) to produce a binary
+  grayscale mask. Contours use the same threshold internally and draw external
+  boundaries in green on a color copy of the original, with a live slider.
+* Adaptive thresholding exposes block size (odd 3–31, default 11), constant C
+  (finite −50–50, default 2), and Mean/Gaussian choice (default Gaussian).
+  Edits run on Apply. Validation names the block-size field correctly.
+* Applied-result labels now support text-valued parameters such as Method.
+  Existing original-image processing, Reset, error preservation, histogram,
+  preview, and saving behavior are retained.
+* 354 M6 algorithm/GUI checks passed: exact global thresholds, independent local
+  3×3 adaptive calculations for both methods, tiny/constant images, boundaries,
+  invalid values, contour position and external-only behavior, unchanged originals,
+  no-image handling, live threshold updates, method labels, repeated Apply, Reset,
+  simulated OpenCV failures, histogram integration, full-resolution PNG saving,
+  operation switching, new-image loading, and shutdown with pending processing.
+* Controls fit real Tk windows at 700×450, 1000×650, and 1200×800. GUI controls were
+  driven programmatically; file dialogs and error messages were simulated.
+* All 165 M5, 111 M4, and 144 M3 regression checks passed. All 15 Python files
+  passed syntax parsing and whitespace checks passed. No dependencies were added.
+* README contains M6 behavior, range rationale, limitations, and manual steps.
+  Code documentation now covers verified M6 algorithms, controls, callback flow,
+  image representations, validation, label formatting, and range choices.
+
 ### M5 — Edge Detection: Complete
 
 User confirmed M5 works on 2026-09-16. Individual manual test results were not recorded.
@@ -212,7 +243,6 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Pending
 
-* M6: Segmentation.
 * M7: Webcam and snapshot.
 * M8: Integration and stability.
 * M9: Documentation and demo.
@@ -221,10 +251,14 @@ See `build-plan.md` for milestone scopes.
 
 ## Next Steps
 
-1. User commits the verified and documented M5 changes.
-2. Proceed to M6 — Segmentation when requested.
+1. User commits the verified and documented M6 changes.
+2. Proceed to M7 — Webcam + Snapshot when requested.
 
 ## Recent Changes
+
+* Marked M6 complete after user confirmation and updated code documentation.
+
+* Implemented and automatically verified M6 segmentation operations and controls.
 
 * Marked M5 complete after user confirmation and updated code documentation.
 

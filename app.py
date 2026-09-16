@@ -12,6 +12,7 @@ from processing.color import grayscale, brightness_contrast, rgb_channels
 from processing.statistics import compute_histogram, equalize_histogram
 from processing.filters import median_filter, gaussian_smoothing, sharpen
 from processing.edges import sobel_edges, canny_edges
+from processing.segmentation import global_threshold, adaptive_threshold, detect_contours
 
 
 IMAGE_FILE_TYPES = [
@@ -146,6 +147,12 @@ class ComputerVisionApp:
                 result = sobel_edges(self.current_image, **parameters)
             elif operation == "Canny Edge Detection":
                 result = canny_edges(self.current_image, **parameters)
+            elif operation == "Global Thresholding":
+                result = global_threshold(self.current_image, **parameters)
+            elif operation == "Adaptive Thresholding":
+                result = adaptive_threshold(self.current_image, **parameters)
+            elif operation == "Contour Detection":
+                result = detect_contours(self.current_image, **parameters)
             elif operation == "Histogram":
                 self.show_histogram()
                 return
@@ -160,11 +167,14 @@ class ComputerVisionApp:
         self.display_image = result
         status = f"Applied: {operation}"
         if parameters:
-            settings = ", ".join(
-                f"{name.replace('_', ' ').title()}: {float(value):g}"
-                for name, value in parameters.items()
-            )
-            status += f"\n{settings}"
+            settings = []
+            for name, value in parameters.items():
+                try:
+                    label_value = f"{float(value):g}"
+                except ValueError:
+                    label_value = str(value)
+                settings.append(f"{name.replace('_', ' ').title()}: {label_value}")
+            status += "\n" + ", ".join(settings)
         self.preview_status.set(status)
         self.refresh_preview()
         self.update_histogram()

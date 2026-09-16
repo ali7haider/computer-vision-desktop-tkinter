@@ -9,6 +9,7 @@ OPERATIONS = (
     "Histogram", "Histogram Equalization",
     "Median Filter", "Gaussian Smoothing", "Sharpening",
     "Sobel Edge Detection", "Canny Edge Detection",
+    "Global Thresholding", "Adaptive Thresholding", "Contour Detection",
 )
 
 
@@ -72,6 +73,18 @@ class OperationControls:
             self.add_entry("Threshold 1 (low: 0–255)", "threshold_1", "100")
             self.add_entry("Threshold 2 (high: 0–255)", "threshold_2", "200")
             self.add_choice("Aperture Size", "aperture_size", ("3", "5", "7"), "3")
+            ttk.Label(self.parameters, text="Edit values, then click Apply.").grid(sticky="w")
+        elif operation in ("Global Thresholding", "Contour Detection"):
+            self.add_slider("Threshold", 0, 255, 127, 1)
+            if operation == "Contour Detection":
+                ttk.Label(
+                    self.parameters, text="Outline bright regions in green.\nOnly outer boundaries are shown.",
+                    wraplength=230,
+                ).grid(sticky="w")
+        elif operation == "Adaptive Thresholding":
+            self.add_entry("Block Size (odd: 3–31)", "block_size", "11")
+            self.add_entry("Constant C (−50–50)", "constant", "2")
+            self.add_choice("Method", "method", ("Mean", "Gaussian"), "Gaussian")
             ttk.Label(self.parameters, text="Edit values, then click Apply.").grid(sticky="w")
         else:
             text = {

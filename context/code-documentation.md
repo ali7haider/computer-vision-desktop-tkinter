@@ -1,15 +1,16 @@
 # Code Documentation
 
 This guide explains how the verified application works, so the student can trace
-the code and explain it during evaluation. It covers **M1–M5**:
+the code and explain it during evaluation. It covers **M1–M6**:
 
 * M1 foundation: commit `3b953a0`.
 * M2 image loading, preview, and saving: commit `b0c57a2`.
 * M3 color and statistics: commit `ccfd624`.
 * M4 filters and applied-result label: user-verified on 2026-09-16.
 * M5 Sobel and Canny edge detection: user-verified on 2026-09-16.
+* M6 thresholding and contour detection: user-verified on 2026-09-16.
 
-The explanations below describe the verified implementation through M5. Update
+The explanations below describe the verified implementation through M6. Update
 this guide after user verification, before committing future implementation changes.
 
 For installation and manual checks, see [README](../README.md). For verification
@@ -27,7 +28,8 @@ results and milestone status, see the [progress tracker](planning/progress-track
 | `processing/statistics.py` | Compute intensity histograms and equalize grayscale images. |
 | `processing/filters.py` | Median filtering, Gaussian smoothing, and sharpening. |
 | `processing/edges.py` | Sobel mean-ratio thresholding and Canny binary edge maps. |
-| `utils/validators.py` | Validate finite numbers, ranges, odd filter kernels, and edge kernel/aperture choices. |
+| `processing/segmentation.py` | Global/adaptive threshold masks and contour overlays. |
+| `utils/validators.py` | Validate finite numbers, ranges, odd filter/block sizes, and edge kernel/aperture choices. |
 | `core/file_handler.py` | Validate file extensions, decode images, and encode/save images. |
 | Package `__init__.py` files | Mark `gui`, `core`, `processing`, and `utils` as regular Python packages. |
 | `requirements.txt` | Declare OpenCV 4.x and NumPy 2.x dependency ranges. |
@@ -35,7 +37,8 @@ results and milestone status, see the [progress tracker](planning/progress-track
 
 M3 adds color/statistics functions and numeric validation to the previously empty
 packages. M4 adds local filters and textbox validation. M5 adds edge detection
-and parameter dropdowns. Segmentation and webcam belong to later milestones.
+and parameter dropdowns. M6 adds segmentation and text-valued parameter labels.
+Webcam belongs to M7.
 
 The package markers contain descriptions, not initialization logic. They make
 imports such as `from gui.layout import create_layout` explicit and conventional.
@@ -635,7 +638,7 @@ requires it; validation, labels, documentation, and boundary checks must then ag
 
 ### Kernel validation details
 
-`validate_kernel_size(value)` strips surrounding whitespace and accepts ASCII
+`validate_kernel_size(value, name="Kernel size")` strips surrounding whitespace and accepts ASCII
 decimal digits only. It rejects more than two digits before integer conversion,
 then enforces 3–31 and odd parity. This avoids sending decimal fractions, negative
 values, even values, or enormous strings to OpenCV.
@@ -670,6 +673,8 @@ The text wraps so it remains readable in a narrow window.
 After a successful image-changing operation, `apply_operation()` builds the label
 from the operation name and the captured parameters. Underscores become spaces,
 parameter names use title case, and numeric values use compact `:g` formatting.
+Since M6, values that cannot be converted to a number retain their text, allowing
+labels such as `Method: Gaussian` without a numeric-conversion error.
 The label changes only after validation and processing succeed.
 
 **Example:** Median Filter is applied with kernel 3, then the user types 5. The
@@ -784,3 +789,122 @@ OpenCV errors separately and shows a processing-failed message. In either case,
 the previous pixels and applied-result label remain intact. Correcting the values
 and pressing Apply retries normally. No image uses the existing no-image warning.
 M5 adds no resource handles or scheduled callbacks requiring additional cleanup.
+
+
+## 24. M6 Controls and Execution Flow
+
+`OPERATIONS` now includes Global Thresholding, Adaptive Thresholding, and Contour
+Detection, bringing the total to thirteen. The existing menu and dropdown include
+them automatically. `apply_operation()` dispatches to the three functions in
+`processing/segmentation.py`, always passing the loaded original.
+
+Global Thresholding and Contour Detection each use a Threshold slider (0–255,
+step 1, default 127). Moving it uses the existing single pending 40 ms processing
+callback. Apply runs the same operation immediately. Adaptive Thresholding uses
+block-size and constant textboxes plus a Mean/Gaussian dropdown; these edits wait
+for Apply. Selecting any operation first applies its defaults.
+
+```text
+Selection or Apply / scheduled slider callback
+    → require image → read controls → validate → segment original
+    → assign display_image → label applied values → refresh preview and histogram
+```
+
+The applied-result label now attempts numeric formatting for each parameter and
+retains text when conversion raises `ValueError`. Thus `constant="2"` displays as
+`Constant: 2`, while `method="Gaussian"` displays as `Method: Gaussian`. Labels
+still describe successful results, not pending edits or failed attempts.
+
+Reset restores the original and default values while retaining the operation.
+Opening another image clears selection. Neither segmentation nor earlier
+operations form a cumulative pipeline. The existing callback cancellation on
+selection, Reset, Apply, and exit also handles the new live threshold sliders.
+
+## 25. Segmentation Algorithms: `processing/segmentation.py`
+
+### `global_threshold(image, threshold=127)`
+
+Validate the threshold, convert the original to grayscale, then call
+`cv2.threshold` with maximum value 255 and `cv2.THRESH_BINARY`. The returned mask
+has the original height and width and uses `uint8` pixels:
+
+```text
+pixel > threshold → 255 (white foreground)
+pixel ≤ threshold → 0 (black background)
+```
+
+For example, intensities `[126, 127, 128]` at threshold 127 become `[0, 0, 255]`.
+At threshold 255 the entire mask is black. At zero, only pixels whose grayscale
+intensity is already zero remain black. The original array is not modified.
+
+### `adaptive_threshold(image, block_size=11, constant=2, method="Gaussian")`
+
+Validate the block size and constant and map the method name to OpenCV's adaptive
+threshold enum. After grayscale conversion, `cv2.adaptiveThreshold` produces a
+binary mask using `cv2.THRESH_BINARY` and maximum value 255.
+
+Instead of one global threshold, each pixel uses its square local neighborhood:
+
+* Mean uses the neighborhood's arithmetic mean.
+* Gaussian uses a weighted mean with more weight near the center.
+* Constant C is subtracted from that local value to form the threshold.
+
+For example, a local value of 100 and C of 2 give a conceptual threshold of 98.
+Larger C lowers the threshold and generally includes more foreground. Negative C
+raises it. OpenCV performs integer-pixel rounding, so fractional C changes may
+produce identical masks. Constant images with C=0 produce black masks; positive
+integer C produces white masks. This differs from Sobel/Canny: thresholding
+selects regions, whereas edge detection selects intensity boundaries.
+
+OpenCV replicates border pixels when extending neighborhoods. A block may exceed
+the image dimensions, so even a 1×1 image can be processed. The function returns
+a full-resolution two-dimensional `uint8` mask without modifying the input.
+
+### `detect_contours(image, threshold=127)`
+
+First call `global_threshold()` to create a binary foreground mask. Reusing it
+keeps the threshold rule and validation identical to Global Thresholding.
+`cv2.findContours` then uses:
+
+* `RETR_EXTERNAL` to retrieve only outer boundaries, leaving holes unoutlined.
+* `CHAIN_APPROX_SIMPLE` to compress straight boundary runs into their endpoints.
+
+The function copies a BGR original, or converts a grayscale original to BGR.
+`cv2.drawContours` draws all retrieved contours (`-1`) in BGR green `(0, 255, 0)`
+with thickness 2. It modifies only this result array, preserving the original.
+The returned image has shape `(height, width, 3)` and dtype `uint8`.
+
+A bright rectangle on black receives a green outline, with its interior and the
+background retained away from the outline. If the mask has no foreground, there
+are no outlines and the result preserves the original appearance. No minimum-area
+filtering is applied. Dark objects on bright backgrounds can instead select the
+surrounding bright region; this implementation does not invert foreground polarity.
+
+The existing preview supports both binary masks and BGR contour overlays. Saving
+uses the full-resolution result; histogram display converts the current result
+to grayscale as before. No new windows, resource handles, or dependencies are added.
+
+## 26. Segmentation Validation and Range Choices
+
+| Parameter | Accepted values / default | Rationale |
+| --- | --- | --- |
+| Global/contour threshold | 0–255, default 127; slider step 1 | Covers unsigned 8-bit grayscale intensity. The processing function also accepts finite fractional thresholds in this range. |
+| Adaptive block size | Odd integers 3–31, default 11 | OpenCV requires odd values greater than one. The upper bound 31 and default 11 are practical project choices. |
+| Adaptive constant C | Finite numbers −50–50, default 2 | Allows lowering or raising the local threshold. The bounds are project choices, not OpenCV limits. |
+| Adaptive method | Mean or Gaussian, default Gaussian | Explicitly selects the local averaging algorithm. Other names are rejected. |
+
+The existing `validate_kernel_size` helper now has an optional `name` argument.
+Filters retain the default `"Kernel size"`; adaptive thresholding passes
+`name="Block size"` so warnings identify the correct control. Digit syntax, odd
+parity, and range checks are unchanged. Empty text, fractions, even sizes, and
+out-of-range values are rejected before processing.
+
+`validate_number()` handles threshold and C conversion, bounds, and finite-value
+checks. Adaptive method validation rejects unsupported names before calling
+OpenCV. The normal GUI restricts method choices, but processing functions also
+validate their parameters for direct calls.
+
+Expected validation failures raise `ValueError`; the coordinator shows a warning
+and leaves the previous result and label intact. OpenCV failures use the existing
+processing-error dialog. Controls are disabled without an image, and menu/Apply
+actions use the existing no-image warning. Corrected values can be applied normally.
