@@ -24,9 +24,10 @@ The priority is:
 
 ## Current Phase
 
-**Phase: Planning / Project Setup**
+**Phase: M8 complete — ready for M9 Documentation + Demo**
 
-No implementation should begin until the basic project structure, selected operations, and development plan are agreed.
+M1–M8 are implemented and user verification is confirmed. Prepare documentation
+and demo materials next; retain known UI follow-ups in the progress tracker.
 
 ---
 

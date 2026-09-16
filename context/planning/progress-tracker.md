@@ -22,13 +22,15 @@ has been updated for the verified implementation.
 
 **M6 — Segmentation: complete.**
 
-**M7 — Webcam + Snapshot: implemented; simulated-camera checks passed, physical-camera verification pending.**
+**M7 — Webcam + Snapshot: complete; covered by user-confirmed M8 integration verification.**
+
+**M8 — Integration + Stability: complete; user verification confirmed.**
 
 ## Current Task
 
-M7 code documentation is updated at the user’s request. User will create the
-commit. Remaining physical-camera checks and the native Save dialog issue are
-recorded below.
+M8 is user-verified and documented. M9 — Documentation + Demo is next. The
+previously reported native Save dialog clipping remains a separate known issue;
+its resolution was not explicitly confirmed.
 
 ## Completed
 
@@ -149,10 +151,37 @@ were added. Webcam remains disabled until M7.
 
 ## In Progress
 
-M7 implementation, automated verification, and code documentation are finished.
-Complete physical-camera verification results have not been recorded.
+No feature implementation in progress.
 
-### M7 — Webcam + Snapshot: Awaiting Physical-Camera Verification
+### M8 — Integration + Stability: Complete
+
+User confirmed M8 verification on 2026-09-16. Individual manual test results were
+not recorded; the confirmation covers the integration milestone as a whole.
+
+* Reviewed the restored build plan, assignment coverage, processing boundaries,
+  validation, callback lifecycle, file handling, and webcam cleanup. All thirteen
+  planned operations are present across the five required categories.
+* All 914 existing checks passed: 63 M2, 147 M3, 111 M4, 165 M5, 354 M6, and 74 M7.
+  Real Tk windows were used; dialogs and cameras were simulated.
+* Reproduced a Save As timing bug: a pending slider callback could change the image
+  saved while the native dialog was open. Saving now takes a copy of the displayed
+  result before opening the dialog, preserving the pixels selected for saving.
+* 470 new end-to-end checks passed after the fix: pending-slider save reproduction,
+  all thirteen operations on normal/tiny/thin images, original preservation,
+  repeated Apply, Reset, PNG/BMP exact pixel saving, JPEG dimensions, and callback
+  error detection. The 63 M2 and 74 M7 checks were rerun after the fix.
+* All 16 Python files passed syntax parsing; whitespace checks passed.
+* Added a complete manual integration checklist to README. Native Save As clipping
+  remains unresolved; the reverted workaround has not been reintroduced.
+* User verification is confirmed and code documentation now explains the Save As
+  timing fix. Camera hardware was not independently tested by the agent. No new
+  dependencies or architectural layers were added.
+
+
+### M7 — Webcam + Snapshot: Complete
+
+Included in the user-confirmed M8 integration verification; detailed hardware
+check results were not individually recorded.
 
 * Added `core/webcam.py` to own the default camera, check availability/read results,
   and release the handle on stop and expected capture failures.
@@ -284,19 +313,22 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Pending
 
-* M7: Remaining physical-camera verification results.
-* M8: Integration and stability.
 * M9: Documentation and demo.
 
 See `build-plan.md` for milestone scopes.
 
 ## Next Steps
 
-1. User creates the M7 commit with the updated code documentation.
-2. Record remaining physical-camera checklist results and revisit Save dialog clipping.
-3. Proceed to M8 — Integration + Stability when requested.
+1. User commits the verified M8 changes and updated documentation.
+2. Proceed to M9 — Documentation + Demo when requested.
+3. Keep the native Save dialog clipping issue visible for final demo preparation.
 
 ## Recent Changes
+
+* Marked M8 complete after user verification and documented the Save As timing fix.
+
+* Completed M8 automated integration review and fixed Save As pixels changing
+  during a pending slider callback. Added final manual verification steps.
 
 * Documented current M7 code at the user’s request, including hidden webcam
   buttons and direct Save As. Recorded the reverted dialog workaround as unresolved.

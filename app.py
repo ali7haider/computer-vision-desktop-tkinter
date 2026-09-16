@@ -88,6 +88,8 @@ class ComputerVisionApp:
                 "No Image", "Please open an image before saving.", parent=self.root
             )
             return
+        # Native dialogs can run pending Tk callbacks. Save the result shown now.
+        image_to_save = self.display_image.copy()
         path = filedialog.asksaveasfilename(
             parent=self.root,
             title="Save Image As",
@@ -97,7 +99,7 @@ class ComputerVisionApp:
         if not path:
             return
         try:
-            save_image(path, self.display_image)
+            save_image(path, image_to_save)
         except (OSError, ValueError, cv2.error):
             messagebox.showerror(
                 "Save Failed",

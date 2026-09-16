@@ -869,6 +869,47 @@ manual verification:
    Confirm the camera indicator turns off and capture can be started after relaunch.
 
 
+
+## M8 Integration and Stability Verification
+
+All thirteen operations are integrated. Save As now preserves a copy of the
+full-resolution result visible when the dialog opens. A pending live-slider
+callback may update the preview while the native dialog is open, but it cannot
+change the pixels selected for that save. Cancel still writes nothing.
+
+Automated verification covers normal/invalid inputs, real Tk controls, simulated
+camera failures and cleanup, and an end-to-end sweep of every operation on normal,
+1×1, single-row, and single-column images. PNG/BMP saves are compared pixel for
+pixel; JPEG is checked for output dimensions because it is lossy. Native dialog
+interaction and actual camera hardware still require manual verification.
+
+Use this final checklist alongside the parameter-specific M3–M7 checklists:
+
+1. Launch with no image. Try processing, Reset, and both Save As entry points.
+   Confirm clear warnings and that the app remains usable.
+2. Open JPG, PNG, and BMP files. Run all thirteen operations, adjust parameters,
+   repeat Apply, use Reset, and switch operations with Histogram open.
+3. Try the invalid values listed in M4–M6. Confirm the displayed result and its
+   label survive each error, then correct the input and apply successfully.
+4. Save color, grayscale, binary, and contour results through both Save As entry
+   points. Cancel Open/Save; try an unreadable image and invalid save destination.
+   Confirm successful processing and saving still work afterward.
+5. Move a live slider and immediately use Save As. The file should contain the
+   result visible when Save As was invoked. Resize while working and check that
+   controls fit at the minimum window size.
+6. Start the physical webcam, take a snapshot, process it, and save it. Repeat
+   start/stop; verify restored static state and hidden camera buttons after Stop.
+7. Test camera unavailability where possible. Close during live capture and verify
+   the camera indicator turns off. Relaunch and start capture again.
+8. Close with a histogram open and immediately after moving a live slider. Check
+   that the terminal has no Tk callback errors.
+
+Known unresolved UI issue: the native macOS Save As sheet can initially appear
+clipped before expanding. The reverted standalone-dialog workaround has not been
+reintroduced. Record whether clipping remains in your manual run. M8 manual verification has been confirmed by the user. The clipping issue remains
+recorded separately because its resolution was not explicitly confirmed. Automated
+checks alone do not establish physical camera or native-dialog behavior.
+
 ---
 
 # 16. Academic Requirements

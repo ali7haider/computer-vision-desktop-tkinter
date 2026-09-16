@@ -1,7 +1,7 @@
 # Code Documentation
 
 This guide explains how the verified application works, so the student can trace
-the code and explain it during evaluation. It covers **M1–M7**:
+the code and explain it during evaluation. It covers **M1–M8**:
 
 * M1 foundation: commit `3b953a0`.
 * M2 image loading, preview, and saving: commit `b0c57a2`.
@@ -9,10 +9,10 @@ the code and explain it during evaluation. It covers **M1–M7**:
 * M4 filters and applied-result label: user-verified on 2026-09-16.
 * M5 Sobel and Canny edge detection: user-verified on 2026-09-16.
 * M6 thresholding and contour detection: user-verified on 2026-09-16.
-* M7 webcam lifecycle and snapshot: implemented with simulated-camera verification;
-  see the progress tracker for remaining physical-camera checks.
+* M7 webcam lifecycle and snapshot: included in user-confirmed M8 integration.
+* M8 integration and Save As timing fix: user-verified on 2026-09-16.
 
-The explanations below describe the verified implementation through M7. Update
+The explanations below describe the verified implementation through M8. Update
 this guide after user verification, before committing future implementation changes.
 
 For installation and manual checks, see [README](../README.md). For verification
@@ -292,11 +292,12 @@ guaranteed frame rate; Tkinter can run it later if the event loop is busy.
 ## 8. Saving an Image
 
 ```text
-File → Save As...
+File → Save As... / Save As button
     → ComputerVisionApp.save_image()
-    → check display_image exists
+    → reject live webcam mode and check display_image exists
+    → image_to_save = display_image.copy()
     → asksaveasfilename()
-    → core.file_handler.save_image(path, display_image)
+    → core.file_handler.save_image(path, image_to_save)
     → encode bytes → write destination
 ```
 
@@ -310,8 +311,16 @@ returns without writing anything.
 
 The helper validates the extension and calls `cv2.imencode(extension, image)`.
 It checks the success flag, then writes the encoded bytes with `encoded.tofile(path)`.
-The extension determines the output format. Saving uses `display_image`, never
-the canvas pixels or `preview_photo`.
+The extension determines the output format. Saving uses a full-resolution copy
+of `display_image`, never the canvas pixels or `preview_photo`.
+
+M8 takes this copy before opening the native dialog because its nested event loop
+can execute a pending slider callback. That callback may replace the displayed
+result while the user chooses a filename. The local `image_to_save` keeps the
+pixels visible when saving was requested, even if the preview later changes.
+For example, a pending brightness update cannot change an already requested save.
+Cancelling discards the temporary copy without writing a file; both save entry
+points use this same behavior. The dialog presentation itself is unchanged.
 
 Encoding happens before opening the destination. An encoding failure therefore
 does not erase an existing file. This is not an atomic save: a filesystem failure
