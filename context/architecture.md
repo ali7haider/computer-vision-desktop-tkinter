@@ -518,6 +518,12 @@ python main.py
 
 Required Python dependencies must be installed before running the application.
 
+Optional local packaging uses `computer_vision.spec` with PyInstaller: build on
+Windows for a portable EXE, or on macOS for an app bundle. Build dependencies live
+in `requirements-build.txt`; application runtime responsibilities are unchanged.
+Recipients of the bundled app do not need a separate Python installation. Build,
+installation, and packaged-app verification steps are in README.
+
 ---
 
 # Environment Strategy

@@ -805,3 +805,47 @@ To trace another feature, follow the same route: find its name in
 `gui/controls.py`, find its branch in `app.py`, then read the corresponding function
 in `processing/`. This connects what you see on the screen to the code that does
 the work.
+
+## 20. How is the application packaged for sharing?
+
+The optional [computer_vision.spec](../computer_vision.spec) file is a **build
+recipe** for PyInstaller. Packaging collects the program and its dependencies so
+the recipient can launch it without installing Python. It does not change how
+the image operations work. The normal `python main.py` startup remains available.
+
+Run this recipe through PyInstaller using the commands in
+[README](../README.md#build-a-windows-exe-or-macos-app), rather than running the
+spec file directly with Python. PyInstaller supplies names such as `SPECPATH`,
+`Analysis`, and `EXE` when it reads the recipe.
+
+| Build step | Simple explanation |
+| --- | --- |
+| `Path(SPECPATH)` | Locate the project beside the recipe, without a machine-specific path. |
+| `Analysis(...)` | Start at `main.py` and collect imported code and required libraries. |
+| `PYZ(...)` | Put the collected Python modules into an archive. |
+| `EXE(...)` | Create the executable that starts the packaged program. |
+| `COLLECT(...)` on macOS | Assemble the executable and its supporting files. |
+| `BUNDLE(...)` on macOS | Arrange those files into a `.app` with application metadata. |
+
+`sys.platform` selects the build configuration. On Windows, the recipe includes
+libraries and data in a single `ComputerVisionTool.exe`. On macOS, it keeps those
+files inside `ComputerVisionTool.app`. Build on the operating system you want to
+support; this recipe does not build Windows executables on a Mac. Other operating
+systems receive a clear message and the build stops.
+
+`console=False` selects a graphical application without a separate console window.
+The macOS `info_plist` includes `NSCameraUsageDescription`, explaining why the app
+requests webcam access. That description does not grant permission automatically;
+the user still controls camera access through macOS.
+
+[requirements-build.txt](../requirements-build.txt) includes the normal runtime
+dependencies and adds PyInstaller for the build computer. The separate
+`.venv-build` environment keeps packaging tools apart from the development
+environment. Generated files go into `build/` and `dist/`; these folders and the
+build environment are ignored by Git.
+
+The macOS bundle has been built and checked for startup outside the source folder.
+The Windows branch describes the configured build behavior, not a verified Windows
+release. Detailed checks and remaining platform/camera verification are recorded
+in the [progress tracker](planning/progress-tracker.md). Installation instructions
+and the manual packaged-app checklist are in README.

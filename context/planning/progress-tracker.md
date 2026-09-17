@@ -30,8 +30,35 @@ has been updated for the verified implementation.
 
 ## Current Task
 
-M1–M9 are complete for the agreed scope, as confirmed by the user. The project is
-ready to share for review. Plan further work after receiving review feedback.
+M1–M9 remain complete for the agreed scope. User requested optional Windows EXE
+packaging and macOS packaging on 2026-09-17. Build configuration and beginner
+build/install instructions are added; packaging verification is recorded below.
+Packaging documentation is prepared for commit. Manual packaged-app verification
+remains outstanding; no additional runtime verification is inferred from this
+documentation update.
+
+### Optional Desktop Packaging — 2026-09-17
+
+* Added `computer_vision.spec`: Windows single-file, windowed EXE and macOS app
+  bundle with a camera usage description. Existing application source is unchanged.
+* Added build-only dependencies in `requirements-build.txt` and ignored generated
+  build/output/environment folders. README explains platform-specific builds,
+  portable Windows installation, macOS Applications installation, and verification.
+* Checked both spec branches with mocked PyInstaller constructors, including
+  Windows embedded dependencies and macOS camera metadata. These checks do not
+  constitute a Windows build or runtime test.
+* macOS Intel build succeeded with Python 3.13.13, PyInstaller 6.22.3, OpenCV
+  4.12.0.88, and NumPy 2.2.6. Output: `dist/ComputerVisionTool.app` (about 252 MiB).
+  Separate build environment passes `pip check`. Bundle camera metadata and
+  `codesign --verify --deep --strict` passed (local ad-hoc signature, not Developer
+  ID signing or notarization).
+* Packaged app remained running for eight seconds when launched outside the source
+  folder, with no captured startup errors. The check terminated the process;
+  interactive GUI actions, normal GUI exit, and physical webcam were not tested.
+  Windows and macOS spec branches passed configuration checks; whitespace checks
+  passed. User verification of the packaged workflow remains pending.
+* Windows build/runtime, target-machine compatibility, and packaged webcam tests
+  require verification on the corresponding machines before distribution.
 
 ## Completed
 
@@ -41,6 +68,9 @@ ready to share for review. Plan further work after receiving review feedback.
   state, callback flow, preview conversion, resizing, file I/O, and error handling.
 * Updated `AGENTS.md` to require code documentation after user verification,
   before implementation commits.
+* Rewrote the guide for beginners and added an explanation of the packaging recipe,
+  build dependencies, output files, and platform limitations. Runtime verification
+  limits remain explicit.
 
 ### Project Planning
 
@@ -341,11 +371,16 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Next Steps
 
-1. User commits and shares the project for review.
-2. Collect review feedback.
-3. Plan the next work based on that feedback.
+1. Build the EXE on Windows using README and manually verify the packaged workflow.
+2. Manually verify the generated macOS app, including camera permissions and exit.
+3. Record manual verification results when available and update documentation if
+   those results change the described behavior or limitations.
+4. Share for review and collect feedback.
 
 ## Recent Changes
+
+* Added optional Windows/macOS packaging and beginner build/install instructions;
+  built and launch-smoke-checked the macOS app. Windows runtime verification remains.
 
 * Marked M1–M9 complete for the user-agreed scope and moved to review handoff.
 
@@ -397,4 +432,4 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Last Updated
 
-2026-09-16
+2026-09-17

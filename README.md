@@ -16,6 +16,119 @@ This project is developed as an **academic assignment**. The focus is on:
 
 The project intentionally avoids unnecessary production-level complexity.
 
+To run the source code on a new computer, start with
+[Installation and Running](#15-installation-and-running-on-a-new-computer).
+To create or use a packaged application, follow the section below.
+
+## Build a Windows EXE or macOS App
+
+[computer_vision.spec](computer_vision.spec) is the build recipe. PyInstaller bundles
+Python, Tkinter, OpenCV, NumPy, and the application into a runnable package.
+Only the person **building** needs Python and the build dependencies. The person
+**using** the finished package does not need Python or pip.
+
+Build the Windows `.exe` on Windows and the macOS `.app` on macOS. PyInstaller does
+not create a Windows executable from a Mac. See the official
+[platform build instructions](https://pyinstaller.org/en/stable/usage.html).
+The original `python main.py` workflow remains available for the assignment.
+
+### Windows: create the EXE
+
+1. Install 64-bit Python 3.13 from [python.org](https://www.python.org/downloads/windows/),
+   including Tcl/Tk support and the Python launcher.
+2. Download/extract the complete project. Open PowerShell in the project folder
+   containing `main.py` and `computer_vision.spec`.
+3. Run these commands one at a time. Continue only if the previous command succeeds:
+
+```powershell
+py -3.13 -m venv .venv-build
+.\.venv-build\Scripts\python.exe -m pip install --only-binary=:all: -r requirements-build.txt
+.\.venv-build\Scripts\python.exe -m tkinter
+.\.venv-build\Scripts\python.exe -m PyInstaller --noconfirm computer_vision.spec
+```
+
+The Tkinter command opens a small test window; close it before building.
+No environment activation is needed. Internet access is required to download the
+build dependencies. The first build can take several minutes.
+
+After a successful build, the file to share is:
+
+```text
+dist\ComputerVisionTool.exe
+```
+
+This is a **portable application**, not a setup wizard. To install/use it on another
+compatible Windows computer, copy the EXE into a folder you want to keep, then
+double-click it. You can create a desktop shortcut to that file. If sent in a ZIP,
+extract it first. To uninstall, close the app and delete the EXE and shortcut;
+images you saved remain where you saved them.
+
+The single EXE extracts its bundled libraries to a temporary folder when launched,
+so startup can take a moment. This build is not publisher-signed. If Windows shows
+a security warning, verify where the file came from; do not disable antivirus.
+Build and test with the same Windows architecture as the intended recipient.
+
+### macOS: create the app
+
+Use a Python installation with working Tkinter, such as the Python 3.13 installer
+from [python.org](https://www.python.org/downloads/macos/). In Terminal, change to
+the project folder and run:
+
+```bash
+python3.13 -m venv .venv-build
+.venv-build/bin/python -m pip install --only-binary=:all: -r requirements-build.txt
+.venv-build/bin/python -m tkinter
+.venv-build/bin/python -m PyInstaller --noconfirm computer_vision.spec
+```
+
+Close the Tkinter test window before building. If using this project's existing,
+working `.venv`, the first command can instead be
+`.venv/bin/python -m venv .venv-build`.
+
+The finished application is:
+
+```text
+dist/ComputerVisionTool.app
+```
+
+Drag it into **Applications**, then double-click it. The `.app` contains its
+dependencies; copying that complete app is sufficient. The additional
+`dist/ComputerVisionTool` folder is an intermediate output, not needed when sharing
+the `.app`. To uninstall, quit and move the app to Trash. Saved images remain.
+
+Allow camera access when prompted if you want webcam snapshots. The build recipe
+includes the camera permission description in the app's `Info.plist`, using
+[PyInstaller's bundle configuration](https://pyinstaller.org/en/stable/spec-files.html#spec-file-options-for-a-macos-bundle).
+Permission can be reviewed in System Settings → Privacy & Security → Camera.
+
+The app is built for the architecture of the Python interpreter used (Apple Silicon
+or Intel); it is not automatically a universal build. Test on the recipient's
+macOS version and architecture. This recipe does not provide an Apple Developer ID
+signature or notarization, so a downloaded copy may be blocked by Gatekeeper.
+For a copy you built or trust, use the system's per-app approval flow if offered;
+do not disable system security. For wider distribution, signing/notarization is
+additional work.
+
+### Rebuild and check before sharing
+
+After changing source code, rerun the PyInstaller command for your OS. `--noconfirm`
+replaces the previous generated output of the same name; keep any older release
+you need elsewhere first. Generated `build/`, `dist/`, and `.venv-build/` folders
+are excluded from Git. `requirements-build.txt` adds the packaging tool separately
+from normal runtime dependencies.
+
+Check the **packaged app**, including on a computer without Python if available:
+
+1. Launch by double-clicking, open an image, apply operations, and view Histogram.
+2. Try an invalid kernel size, correct it, and apply again.
+3. Save a result and reopen it; cancel Open and Save dialogs.
+4. Start the webcam, take a snapshot, process/save it, and start/stop again.
+5. Close while the webcam is active and confirm the camera turns off.
+
+A successful build alone does not prove GUI, camera, or another computer's
+compatibility. Recorded packaging checks and remaining checks are in the
+[progress tracker](context/planning/progress-tracker.md).
+
 ---
 
 # 1. Technology
@@ -576,29 +689,124 @@ Never an application crash.
 
 ---
 
-# 15. Running the Application
+# 15. Installation and Running on a New Computer
 
-Use a Python installation with Tkinter support, then create a virtual environment
-and install the required dependencies:
+These steps run the **source code**. If you already have the finished Windows
+EXE or macOS app, use the [packaged-app instructions](#build-a-windows-exe-or-macos-app)
+instead; those packages do not require a separate Python installation.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+## Before you start
+
+1. Install **64-bit Python 3.13 with Tkinter support**. This project's recorded
+   local checks used Python 3.13; Windows still needs its own runtime verification.
+2. Download and extract the complete project ZIP, or clone the repository.
+   Keep `main.py`, `app.py`, `requirements.txt`, and the `gui`, `core`, `processing`,
+   and `utils` folders together. Copying only `main.py` is not enough.
+3. Open a terminal in the extracted project folder, where `main.py` and
+   `requirements.txt` are located. Keep the path in quotes if it contains spaces.
+4. Create a **new virtual environment on this computer** using the commands below.
+   Internet access is needed to download dependencies during setup.
+
+A virtual environment is a local folder containing a Python environment and this
+project's installed libraries. **Do not copy `.venv` or `.venv-build` from another
+computer or reuse a Mac environment on Windows.** They contain platform-specific
+files and paths. Recreate the environment after moving the project to a different
+location as well. This follows Python's
+[virtual environment guidance](https://docs.python.org/3/library/venv.html#how-venvs-work).
+Only recreate the environment folders; keep your source code and saved images.
+
+`.venv` is for running/developing the source; `.venv-build` is for making the EXE/app.
+Both are ignored by Git. `requirements.txt` tells pip which runtime libraries to
+install on the new machine; `requirements-build.txt` also includes PyInstaller.
+
+## Windows setup (PowerShell)
+
+Install Python 3.13 from [python.org](https://www.python.org/downloads/windows/)
+with Tcl/Tk support and the Python launcher. Open a new PowerShell window afterward.
+Replace the example folder below with your extracted project folder:
+
+```powershell
+cd "C:\path\to\computer-vision-desktop-tkinter"
+py -3.13 --version
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install --only-binary=:all: -r requirements.txt
+.\.venv\Scripts\python.exe -m tkinter
 ```
 
-Tkinter is normally included with standard Python installations, but its availability depends on the operating system and Python installation.
+Run commands one at a time and resolve any error before continuing. The last
+command should open a small Tkinter test window; close it, then launch:
 
-Run the application from the project directory:
-
-```bash
-python main.py
+```powershell
+.\.venv\Scripts\python.exe main.py
 ```
 
-On Windows, activate the environment with `.venv\Scripts\activate` instead.
+These commands directly use the environment's Python. You do not need to activate
+it or change PowerShell's script execution policy. If `py` is not found but
+`python --version` reports Python 3.13, use `python` instead of `py -3.13` for the
+version check and environment creation. Otherwise, check your Python installation.
 
-On macOS, File and Tools appear in the system menu bar at the top of the screen
-when the application is active.
+## macOS setup (Terminal)
+
+Install Python 3.13 with Tkinter from
+[python.org](https://www.python.org/downloads/macos/). Use that installation rather
+than assuming the system's `python3` includes a working Tkinter. Replace the
+example folder below with your extracted project folder:
+
+```bash
+cd "/path/to/computer-vision-desktop-tkinter"
+python3.13 --version
+python3.13 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install --only-binary=:all: -r requirements.txt
+.venv/bin/python -m tkinter
+```
+
+Run commands one at a time. Close the Tkinter test window, then launch:
+
+```bash
+.venv/bin/python main.py
+```
+
+File and Tools appear in the macOS system menu bar at the top of the screen when
+the application is active. Camera access may require permission for the application
+hosting Python.
+
+## Running again later
+
+Open a terminal in the project folder and run only your platform's launch command:
+
+| Platform | Command |
+| --- | --- |
+| Windows PowerShell | `.\.venv\Scripts\python.exe main.py` |
+| macOS Terminal | `.venv/bin/python main.py` |
+
+You do not need to recreate the environment or reinstall dependencies each time.
+If `requirements.txt` changes, rerun its installation command. A new computer or
+moved environment needs fresh setup. In an IDE, select this project's local
+`.venv` Python as the interpreter so its Run button uses the same dependencies.
+
+## Common setup problems
+
+| Problem | What to check |
+| --- | --- |
+| `python`, `py`, or `python3.13` is not found | Install Python for your OS, reopen the terminal, and check the version command. |
+| `main.py` or `requirements.txt` is not found | Change to the extracted project folder before running the commands. |
+| `No module named cv2` or `numpy` | Install requirements using the same `.venv` Python used to launch the app. |
+| `No module named tkinter` or `_tkinter` | Repair/install a Python distribution with Tcl/Tk support, then recreate the environment with that Python. Tkinter is not installed by `pip install tkinter`. |
+| A copied environment fails, or mentions another computer's path | Remove only the copied environment folder and create it again locally. |
+| pip reports no matching binary distribution | Check that you are using 64-bit Python 3.13 and current pip. The chosen OS/architecture may not have compatible wheels; do not assume packages from another OS will work. |
+| pip cannot reach the package server | Check your internet/proxy settings, then retry the installation command. |
+| Webcam cannot open | Check camera permissions and availability, and whether another application is using it. Image-file processing can still be used. |
+
+`--only-binary=:all:` requests prebuilt dependency packages, avoiding an accidental
+OpenCV source compilation. If no compatible package is available, installation
+stops with an error instead.
+
+The Tkinter test is the standard check described in the
+[Python Tkinter documentation](https://docs.python.org/3/library/tkinter.html).
+After setup, open an image, apply an operation, save the result, and test the
+webcam if available. Use the detailed checks below for full verification.
 
 ## M2 Manual Verification
 
