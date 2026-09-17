@@ -719,6 +719,30 @@ Only recreate the environment folders; keep your source code and saved images.
 Both are ignored by Git. `requirements.txt` tells pip which runtime libraries to
 install on the new machine; `requirements-build.txt` also includes PyInstaller.
 
+### Which command installs all the required libraries into `.venv`?
+
+After creating `.venv`, run the command for your operating system from the project
+folder. If you have not created it yet, follow the setup steps below first.
+
+**Windows (PowerShell):**
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --only-binary=:all: -r requirements.txt
+```
+
+**macOS (Terminal):**
+
+```bash
+.venv/bin/python -m pip install --only-binary=:all: -r requirements.txt
+```
+
+`-r requirements.txt` tells pip to install every library listed in that file
+(OpenCV and NumPy), along with any dependencies they require. Using the Python
+inside `.venv` installs those libraries into the **`.venv` folder**, rather than
+your global Python installation. You do not need to install each library separately
+or activate the environment first. `--only-binary=:all:` requests prebuilt packages.
+Python and Tkinter must already be available as described in the setup steps.
+
 ## Windows setup (PowerShell)
 
 Install Python 3.13 from [python.org](https://www.python.org/downloads/windows/)

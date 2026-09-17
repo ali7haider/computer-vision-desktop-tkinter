@@ -44,6 +44,10 @@ documentation update.
 * Added build-only dependencies in `requirements-build.txt` and ignored generated
   build/output/environment folders. README explains platform-specific builds,
   portable Windows installation, macOS Applications installation, and verification.
+* Expanded README source installation for a fresh Windows or macOS computer:
+  install Python, recreate local environments, install requirements, check Tkinter,
+  launch without activation, and troubleshoot setup. These documentation updates
+  do not represent a new Windows runtime test.
 * Checked both spec branches with mocked PyInstaller constructors, including
   Windows embedded dependencies and macOS camera metadata. These checks do not
   constitute a Windows build or runtime test.
