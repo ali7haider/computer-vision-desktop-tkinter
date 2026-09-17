@@ -1,612 +1,432 @@
-# Code Documentation
+# Beginner’s Guide to the Code
 
-This guide explains how the verified application works, so the student can trace
-the code and explain it during evaluation. It covers **M1–M8**:
+This guide explains how the application works for someone who is new to Python,
+Tkinter, and computer vision. Start with sections 1–5, then follow an image through
+opening, processing, and saving. You do not need to understand every OpenCV detail
+on your first reading.
 
-* M1 foundation: commit `3b953a0`.
-* M2 image loading, preview, and saving: commit `b0c57a2`.
-* M3 color and statistics: commit `ccfd624`.
-* M4 filters and applied-result label: user-verified on 2026-09-16.
-* M5 Sobel and Canny edge detection: user-verified on 2026-09-16.
-* M6 thresholding and contour detection: user-verified on 2026-09-16.
-* M7 webcam lifecycle and snapshot: included in user-confirmed M8 integration.
-* M8 integration and Save As timing fix: user-verified on 2026-09-16.
 
-The explanations below describe the verified implementation through M8. Update
-this guide after user verification, before committing future implementation changes.
+## 1. What does this application do?
 
-For installation and manual checks, see [README](../README.md). For verification
-results and milestone status, see the [progress tracker](planning/progress-tracker.md).
+The application lets you open a picture, choose an image operation, see the result,
+and save it. You can also take a webcam snapshot and use it like an opened picture.
 
-## 1. Code Map
-
-| File | Responsibility |
-| --- | --- |
-| `main.py` | Create the Tkinter root, create the application, start the event loop. |
-| `app.py` | Own image state and connect file actions, preview updates, and shutdown. |
-| `gui/layout.py` | Create menus, arrange panels, and return the preview canvas. |
-| `gui/controls.py` | Manage the operation selector, sliders, textboxes, parameter dropdowns, Apply, and Reset. |
-| `processing/color.py` | Grayscale, brightness/contrast, and RGB channel manipulation. |
-| `processing/statistics.py` | Compute intensity histograms and equalize grayscale images. |
-| `processing/filters.py` | Median filtering, Gaussian smoothing, and sharpening. |
-| `processing/edges.py` | Sobel mean-ratio thresholding and Canny binary edge maps. |
-| `processing/segmentation.py` | Global/adaptive threshold masks and contour overlays. |
-| `utils/validators.py` | Validate finite numbers, ranges, odd filter/block sizes, and edge kernel/aperture choices. |
-| `core/webcam.py` | Own, read, and release the default camera handle. |
-| `core/file_handler.py` | Validate file extensions, decode images, and encode/save images. |
-| Package `__init__.py` files | Mark `gui`, `core`, `processing`, and `utils` as regular Python packages. |
-| `requirements.txt` | Declare OpenCV 4.x and NumPy 2.x dependency ranges. |
-| `.gitignore` | Exclude Python cache files and the local `.venv` environment from Git. |
-
-M3 adds color/statistics functions and numeric validation to the previously empty
-packages. M4 adds local filters and textbox validation. M5 adds edge detection
-and parameter dropdowns. M6 adds segmentation and text-valued parameter labels.
-M7 adds webcam capture, snapshots, and a direct Save As button.
-
-The package markers contain descriptions, not initialization logic. They make
-imports such as `from gui.layout import create_layout` explicit and conventional.
-Python executes a package's `__init__.py` when first importing that package.
-
-## 2. Startup: `main.py`
+Here is the main journey:
 
 ```text
-python main.py
-    → main()
-    → tk.Tk()
-    → ComputerVisionApp(root)
-    → root.mainloop()
+Start the application
+    → Open an image or take a snapshot
+    → Choose an operation
+    → Adjust its settings
+    → View the result
+    → Save the result
+    → Close the application
 ```
 
-`tk.Tk()` creates the main window and its Tcl/Tk interpreter. The interpreter is
-the underlying system that implements Tkinter's widgets and events.
+**The most important behavior to remember:** each image-changing operation starts
+from the original image. Effects do not build on the previous result.
 
-`ComputerVisionApp(root)` configures that window and connects its actions.
-`root.mainloop()` then waits for events such as menu selections, window resizing,
-and closing. Tkinter invokes the corresponding Python functions when events occur.
+For example, choosing Grayscale and then Canny does not pass the grayscale result
+from the first operation into the second. Canny receives the original and performs
+its own grayscale conversion. Clicking Apply twice with the same settings does
+not apply the effect twice as strongly.
 
-The guard `if __name__ == "__main__":` starts the application only when this file
-is run directly. Importing `main` does not open a window automatically.
+Histogram is different: it measures the result currently displayed and does not
+replace that result.
 
-### Why pass functions instead of calling them?
+## 2. Words you will see in the code
 
-In `app.py`, layout creation receives `self.close`, `self.open_image`, and
-`self.save_image`, plus `self.select_operation` and `self.reset_image`. These are
-**callbacks**: functions to call later.
-
-For example, `command=on_open` connects a menu item to the open action. Writing
-`command=on_open()` would run it immediately while constructing the menu.
-
-## 3. Application State: `ComputerVisionApp`
-
-The constructor sets the title, initial size (`1000×650`), and minimum size
-(`700×450`). It initializes the following attributes:
-
-| Attribute | Initial value | Meaning |
+| Word | Simple meaning | Example in this project |
 | --- | --- | --- |
-| `root` | Tkinter root | Main window and event-loop access. |
-| `current_image` | `None` | Full-resolution image loaded from the file. |
-| `display_image` | `None` | Full-resolution result used for preview and saving. |
-| `preview_photo` | `None` | Tkinter-compatible image used by the canvas. |
-| `resize_job` | `None` | Identifier of a scheduled preview update, if one exists. |
-| `preview` | Canvas returned by layout | Widget on which the preview is drawn. |
-| `processing_job` | `None` | Identifier of a scheduled slider-driven operation. |
-| `histogram_canvas` | `None` | Canvas in the optional histogram window. |
-| `controls` | `OperationControls` instance | Owns selector and parameter widgets/variables. |
-| `preview_status` | `StringVar` saying “No image loaded” | Describes the actual displayed result, independently of selected/edited controls. |
+| Function | A named set of instructions that performs a task. | `load_image(path)` reads an image. |
+| Argument | A value you give a function when calling it. | The filename passed to `load_image`. |
+| Parameter | A named input in a function definition; also a setting in the interface. | `kernel_size` controls a filter’s neighborhood size. |
+| Return value | The answer a function gives back. | `grayscale(image)` returns a grayscale image. |
+| Module | A Python file that other files can import. | `processing/color.py`. |
+| Class | A definition that groups related data and functions. | `ComputerVisionApp`. |
+| Object | One instance created from a class. | `Webcam()` creates a camera-management object. |
+| Method | A function belonging to a class. | `self.reset_image()`. |
+| Attribute | A value stored on an object. | `self.current_image`. |
+| State | The information the application remembers right now. | The original image and whether the webcam is running. |
+| GUI | Graphical user interface: windows, buttons, and other visible controls. | The control panel and image preview. |
+| Widget | One GUI element. | A button, textbox, or canvas. |
+| Callback | A function registered to run when something happens. | Clicking Save As calls `save_image`. |
+| Validation | Checking a value before using it. | Rejecting `abc` as a kernel size. |
+| Exception | Python’s way of reporting that an operation could not finish normally. | `ValueError` for an invalid setting. |
 
-The constructor also binds canvas `<Configure>` events to `schedule_preview` and
-the window-close protocol `WM_DELETE_WINDOW` to `close`.
+Three tools do most of the work:
 
-### Original, result, and preview are different things
+* **Tkinter** creates the interface and reacts to user actions.
+* **NumPy** stores and calculates with grids of pixel numbers.
+* **OpenCV**, imported as `cv2`, provides image-processing and camera functions.
 
-After loading, `open_image` stores the original and calls `reset_image`, which
-creates the independent result. The relevant assignments are:
+## 3. Which file should I read?
+
+| File | What it does |
+| --- | --- |
+| [main.py](../main.py) | Starts the application. Read this first. |
+| [app.py](../app.py) | Connects user actions to processing, remembers images, and updates the screen. |
+| [gui/layout.py](../gui/layout.py) | Builds menus, panels, preview area, and histogram window. |
+| [gui/controls.py](../gui/controls.py) | Builds the operation dropdown and the settings for each operation. |
+| [core/file_handler.py](../core/file_handler.py) | Reads images from files and writes results to files. |
+| [core/webcam.py](../core/webcam.py) | Opens the camera, reads frames, and releases it. |
+| [processing/color.py](../processing/color.py) | Changes grayscale, brightness, contrast, and color channels. |
+| [processing/statistics.py](../processing/statistics.py) | Counts brightness levels and performs histogram equalization. |
+| [processing/filters.py](../processing/filters.py) | Smooths or sharpens images. |
+| [processing/edges.py](../processing/edges.py) | Finds edges using Sobel and Canny. |
+| [processing/segmentation.py](../processing/segmentation.py) | Creates black-and-white masks and draws object boundaries. |
+| [utils/validators.py](../utils/validators.py) | Checks processing settings before OpenCV receives them. |
+
+The small `__init__.py` files mark folders as Python packages, allowing imports
+such as `from processing.color import grayscale`. They contain descriptions rather
+than application setup logic. `requirements.txt` lists the OpenCV and NumPy
+dependencies; `.gitignore` keeps local environment and cache files out of Git.
+
+Notice the division of work: the GUI creates controls, `app.py` decides what to do,
+and `processing/` performs calculations. A processing function does not need to
+know which button caused it to run.
+
+## 4. How does the program start?
+
+In `main.py`, the key lines are:
 
 ```python
-self.current_image = image
+root = tk.Tk()
+ComputerVisionApp(root)
+root.mainloop()
+```
+
+Read them as:
+
+1. Create the main window and call it `root`.
+2. Create the application object, giving it that window.
+3. Keep listening for actions such as clicks, resizing, and closing.
+
+The third step is called the **event loop**. The program waits for an event,
+runs its callback, and then continues listening.
+
+The last lines of `main.py` use:
+
+```python
+if __name__ == "__main__":
+    main()
+```
+
+This means “start the application when this file is run directly.” Importing
+`main.py` from another Python file does not automatically open the window.
+
+### Understanding `self` and `__init__`
+
+`ComputerVisionApp` is the main application class. Its `__init__` method runs when
+the object is created. It sets up the window, initial values, controls, and callbacks.
+
+Inside a method, `self` means “this particular application object.” For example,
+`self.current_image` is the image remembered by this application. Storing it on
+`self` lets different methods access it later.
+
+### Why is there sometimes no `()` after a function name?
+
+```python
+command=on_open
+```
+
+This gives Tkinter a function to call **later**, when the user clicks the menu item.
+Writing `command=on_open()` would call it immediately while building the interface.
+That is why callbacks are usually passed without parentheses.
+
+## 5. How does Python store an image?
+
+A picture consists of tiny dots called **pixels**. This application stores their
+values in a NumPy array: a grid of numbers.
+
+A grayscale image stores one brightness number per pixel:
+
+```text
+0 = black        128 = medium gray        255 = white
+```
+
+A color image stores three numbers per pixel. OpenCV uses **BGR** order:
+blue first, then green, then red.
+
+```text
+BGR [0, 0, 255]   = red
+BGR [255, 0, 0]   = blue
+BGR [255,255,255] = white
+```
+
+An image’s `shape` describes its dimensions. A color image with width 640 and
+height 480 has shape `(480, 640, 3)`: height, width, number of channels. A grayscale
+version has shape `(480, 640)`.
+
+`uint8` means each stored value is a whole number from 0 to 255. Some calculations
+use decimal or signed numbers temporarily, then convert back to `uint8`.
+
+### The original, the result, and the preview
+
+These names in `app.py` have different jobs:
+
+| Attribute | What it remembers |
+| --- | --- |
+| `current_image` | The original image from a file or snapshot. |
+| `display_image` | The full-size result that can be saved. |
+| `preview_photo` | A Tkinter-compatible picture drawn inside the window. |
+| `preview_status` | Text describing the result currently shown. |
+
+Before an image exists, the image attributes are `None`, which means “no value yet.”
+
+Reset uses:
+
+```python
 self.display_image = self.current_image.copy()
 ```
 
-`.copy()` gives the result its own pixel storage. Assigning `display_image = image`
-would make both names refer to the same array; later edits through one reference
-could change the other. Loading and Reset give both arrays identical content but
-separate storage; processing then replaces only `display_image`.
+`.copy()` creates separate pixel storage. Without it, two variable names could
+refer to the same array, so modifying pixels through one name could also affect
+the other. Keeping the original separate makes Reset possible.
 
-The preview is a smaller, temporary representation of `display_image`. It never
-replaces the full-resolution result. Saving therefore does not reduce resolution
-just because the application window is small.
+The preview may be smaller than the full-size result. Shrinking the window does
+not shrink the image that Save As writes.
 
-### What is an image in memory?
+## 6. How are the interface and controls connected?
 
-`load_image` returns a NumPy array with shape `(height, width, 3)` and type `uint8`.
-Each channel value is between 0 and 255. OpenCV stores color channels as **BGR**:
-blue, green, red. For example, `[0, 0, 255]` is a red pixel.
+`create_layout()` in `gui/layout.py` creates the File and Tools menus, the left
+control panel, and the right preview panel. It returns the preview canvas, control
+panel, and two camera buttons so `app.py` can use them.
 
-Loading uses `cv2.IMREAD_COLOR`, which normalizes input to a three-channel color
-image. A grayscale file is loaded with three channels; PNG transparency is not
-preserved. M2 saves pixel content, not original file metadata.
+A **canvas** is a widget you can draw on. The preview canvas displays the image;
+the histogram canvas displays bars and labels.
 
-## 4. GUI Construction
+The layout uses `grid`, which places widgets in rows and columns. For example,
+`sticky="nsew"` lets a widget stretch toward all four sides of its cell, and
+`weight=1` lets a row or column receive extra space. This makes the preview grow
+when the window grows. The initial window is 1000×650, with a minimum of 700×450.
+On macOS, File and Tools appear in the system menu bar at the top of the screen.
 
-### `gui/layout.py`: `create_layout(...)`
+`OperationControls` in `gui/controls.py` manages the left panel:
 
-This function creates the File and Tools menus and attaches the menu bar with
-`root.configure(menu=menu_bar)`.
+| Method or value | Purpose |
+| --- | --- |
+| `OPERATIONS` | The names of all thirteen operations, shared with the Tools menu. |
+| `choose(operation)` | Remove the old parameter widgets and create the selected operation’s defaults. |
+| `add_slider(...)` | Create a slider for a numeric setting. |
+| `add_entry(...)` | Create a textbox. |
+| `add_choice(...)` | Create a dropdown of allowed settings. |
+| `set_image_loaded(loaded)` | Enable or disable parameter controls. |
+| `get_parameters()` | Read current values into a dictionary. |
 
-Open, Save As, Access Live Webcam, Exit, all thirteen operations, and Reset
-have callbacks. The function also receives snapshot and stop callbacks and the
-preview-status variable.
+A **dictionary** stores names with their values. For Median Filter, parameters
+might be `{"kernel_size": "3"}`. Textboxes return text, even when you type a number;
+validation converts that text before processing.
 
-The Tools menu loops through `OPERATIONS`. Its callback uses `lambda name=operation`
-to capture each current operation name, so every menu item invokes its own operation.
+`StringVar` and `DoubleVar` are Tkinter values connected to widgets: text and
+numbers respectively. Calling `.get()` reads the value; `.set(...)` changes it.
+`values` stores these variables, while `sliders`, `entries`, and `choices` store
+widget references so their enabled/disabled state can be updated.
 
-On macOS, the active application's menus appear in the system menu bar at the top
-of the screen. They do not appear as a row inside the application window.
+In the Tools menu, `lambda name=operation: on_select(name)` creates a short
+callback. The `name=operation` part remembers the correct name for each menu item.
 
-The function uses `grid` to arrange the controls on the left and preview on the
-right. `sticky="nsew"` lets a widget fill its grid cell in all directions.
-Row/column `weight=1` allows a cell to receive extra space when its parent grows.
-The preview column gets the extra horizontal space; the controls keep their
-requested width.
-
-The preview canvas starts with requested dimensions of `1×1`, allowing the grid
-to determine its actual size. It has a white background. The function returns
-`(canvas, controls, snapshot, stop)` so `app.py` can draw previews and construct `OperationControls`
-in the control panel. File-handling logic remains outside the layout module.
-
-### `gui/controls.py`: `OperationControls`
-
-This class replaces M1/M2's placeholder `create_controls` function. A class keeps
-related widget references and parameter values together without adding another
-application coordinator. It does not process images.
-
-* `operation` is a `StringVar` connected to a read-only combobox.
-* `choose(operation)` rebuilds only the relevant parameter controls with defaults.
-* `add_slider(...)` creates a labeled `Scale` backed by a `DoubleVar`.
-* `values` maps parameter names to those variables; `sliders` stores widget references.
-* `add_entry(...)` creates a labeled textbox backed by a `StringVar`.
-* `entries` stores textbox widgets, alongside `sliders`.
-* `set_image_loaded(loaded)` enables/disables sliders, entries, and parameter dropdowns.
-* `selector` stores the operation dropdown so live capture can disable it.
-* `get_parameters()` returns numbers or strings under the processing parameter names.
-
-Dropdown selection invokes the coordinator's selection callback. Slider movement
-invokes its scheduling callback. Apply, Reset, and Save As call coordinator methods
-directly. The `on_save` constructor argument connects the button to `save_image()`.
-
-## 5. Opening an Image
+## 7. What happens when I open an image?
 
 ```text
 File → Open...
-    → ComputerVisionApp.open_image()
-    → askopenfilename()
-    → core.file_handler.load_image(path)
-    → store original and independent result
-    → refresh_preview()
+    → app.py: open_image()
+    → show file picker
+    → core/file_handler.py: load_image(path)
+    → remember the original
+    → clear operation selection and reset the result
+    → draw the preview
 ```
 
-### `ComputerVisionApp.open_image()`
+`load_image()` performs these checks and steps:
 
-The native file dialog uses filters from `IMAGE_FILE_TYPES`, a combined image
-filter, and an All Files option. Filters help selection; they do not validate
-the actual contents of a file.
+1. `validate_extension()` checks for `.jpg`, `.jpeg`, `.png`, or `.bmp`, ignoring case.
+2. `np.fromfile()` reads the file’s bytes. This also supports Unicode filenames.
+3. An empty file is rejected.
+4. `cv2.imdecode()` turns those bytes into pixels.
+5. If decoding fails, the helper reports an error rather than returning an image.
 
-If the user cancels, the dialog returns an empty path and the method returns
-immediately. Otherwise, it calls `load_image(path)` inside a `try` block.
-Application image state changes only after loading succeeds. This is why opening
-a corrupt file leaves the previous image visible.
+The file extension alone is not proof of a valid image. Renaming a text file to
+`photo.jpg` does not make it readable as a photograph.
 
-### `validate_extension(path)`
+`cv2.IMREAD_COLOR` loads a three-channel BGR image. Even a grayscale file becomes
+a three-channel image when opened; PNG transparency is not preserved. Saving later
+writes pixel content rather than preserving the original file’s metadata.
 
-`Path(path).suffix.lower()` extracts a case-insensitive extension. The supported
-set is `.jpg`, `.jpeg`, `.png`, and `.bmp`. The function returns the extension or
-raises `ValueError` if it is unsupported. Both loading and saving use this check.
+If you cancel the picker, nothing changes. If opening fails, the application
+shows “Open Failed” and keeps the previous image. It only replaces image state
+after loading succeeds. A successful open also stops any live webcam capture.
 
-### `load_image(path)`
+## 8. What happens when I choose an operation?
 
-1. Validate the extension.
-2. Read encoded file bytes with `np.fromfile(path, dtype=np.uint8)`.
-3. Reject an empty file before attempting to decode it.
-4. Decode with `cv2.imdecode(data, cv2.IMREAD_COLOR)`.
-5. Reject `None`, which means OpenCV could not decode an image.
-6. Return the pixel array.
+`select_operation()` in `app.py` cancels any waiting processing update, rebuilds
+the controls with default settings, and calls `apply_operation()`.
 
-NumPy handles the filesystem path, while OpenCV decodes the bytes. This supports
-filenames containing Unicode characters without relying on OpenCV's path handling.
+```text
+apply_operation()
+    → check that a static image is available
+    → read the selected operation and parameters
+    → call the matching processing function
+    → store its returned image in display_image
+    → update the result label, preview, and any open histogram
+```
 
-**Example:** renaming a text file to `photo.jpg` passes extension validation, but
-decoding fails. The GUI displays “Open Failed” and keeps the existing image.
-
-## 6. Rendering the Preview
-
-`refresh_preview()` first cancels any pending resize job and clears its identifier.
-This also handles an immediate refresh after opening a file, when a resize update
-might already be scheduled.
-
-It reads the canvas dimensions, enforcing a minimum of one pixel, and removes
-the previous canvas items. With no image loaded, it draws “Open an image to begin.”
-
-With an image loaded, it follows these steps:
-
-### Fit the image without stretching
+The method uses `if` and `elif` branches to choose a function. For example:
 
 ```python
-scale = min(width / image_width, height / image_height, 1.0)
+result = median_filter(self.current_image, **parameters)
 ```
 
-Both image dimensions use the same scale, preserving proportions. The `1.0`
-cap prevents enlarging an image beyond its original pixel dimensions. Integer
-rounding can produce a small, approximately one-pixel difference in proportions.
-
-For an image of `1600×900` and a canvas of `800×600`:
-
-```text
-scale = min(800/1600, 600/900, 1) = 0.5
-preview = 800×450
-saved image = 1600×900
-```
-
-The unused vertical space becomes padding. `cv2.resize` uses `INTER_AREA`, which
-is suitable for shrinking the preview. Each computed dimension is at least one
-pixel, including for very thin images.
-
-### Convert OpenCV pixels for Tkinter
-
-The code converts BGR to RGB with `cv2.cvtColor`. It also supports a two-dimensional
-grayscale result by converting it to three RGB channels for display.
-
-It then constructs binary **PPM** data: a short header describing the dimensions
-and channel maximum (`255`), followed by raw RGB bytes. Tkinter's `PhotoImage`
-can read this format directly, so Pillow is not needed.
-
-The resulting `PhotoImage` is stored in `self.preview_photo`. Keeping this Python
-reference prevents garbage collection from removing the image while the canvas
-still uses it. `create_image(width / 2, height / 2, ...)` centers the preview.
-
-## 7. Updating During Window Resizing
-
-Canvas size changes generate `<Configure>` events. Each calls
-`schedule_preview(event)`:
+Here `**parameters` passes the dictionary entries as named arguments. If the
+dictionary is `{"kernel_size": "3"}`, the call means:
 
 ```python
-if self.resize_job is None:
-    self.resize_job = self.root.after(40, self.refresh_preview)
+result = median_filter(self.current_image, kernel_size="3")
 ```
 
-`after` schedules work in Tkinter's event loop; it does not create a thread or
-sleep inside the event handler. There is only one pending update. Additional
-resize events leave that update in place rather than postponing it.
+The processing function validates the setting and returns a new result. Only after
+it succeeds does `app.py` replace `display_image`. An invalid setting therefore
+leaves the previous result and its label intact.
+
+### When do edited settings take effect?
+
+| User action | Result |
+| --- | --- |
+| Select an operation | Apply its default settings immediately, if an image is loaded. |
+| Move a slider | Schedule an automatic update after about 40 milliseconds. |
+| Edit a textbox or parameter dropdown | Wait for Apply. |
+| Click Apply | Read the current settings and process immediately. |
+| Click Reset | Restore the original and default settings; keep the selected operation. |
+| Open another image or take a snapshot | Use a new original and clear operation selection. |
+
+Reset does not automatically reapply the selected effect. Its label says the
+original is shown.
+
+The result label describes **successfully applied values**. If Median Filter was
+applied with size 3 and you type 5, the label stays at 3 until Apply succeeds.
+Typing `abc` and clicking Apply produces a warning and keeps the size-3 result.
+
+## 9. Color and brightness operations
+
+These functions are in `processing/color.py`.
+
+### Grayscale: `grayscale(image)`
+
+Grayscale removes color and keeps brightness information. The function uses
+`cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)`. It combines the color channels with
+weights; it does not simply average all three equally. If the input is already
+grayscale, the function returns a copy.
+
+The result has one number per pixel instead of three.
+
+### Brightness / Contrast: `brightness_contrast(...)`
+
+The calculation is:
 
 ```text
-Resize event → schedule update
-More resize events → keep the pending update
-About 40 ms later → refresh using the latest canvas dimensions
-Next resize event → schedule another update
+new value = old value × contrast + brightness
 ```
 
-This is called throttling: limiting how often work runs while still updating
-during a continuous stream of events. The earlier delay-until-resizing-stops
-behavior was replaced during M2. The 40 ms delay is a scheduling target, not a
-guaranteed frame rate; Tkinter can run it later if the event loop is busy.
+Brightness adds or subtracts an amount. Contrast multiplies the value. Defaults
+of brightness 0 and contrast 1 leave the image unchanged.
 
-## 8. Saving an Image
+For a channel value of 100, contrast 1.5 and brightness 20 give:
 
 ```text
-File → Save As... / Save As button
-    → ComputerVisionApp.save_image()
-    → reject live webcam mode and check display_image exists
-    → image_to_save = display_image.copy()
-    → asksaveasfilename()
-    → core.file_handler.save_image(path, image_to_save)
-    → encode bytes → write destination
+100 × 1.5 + 20 = 170
 ```
 
-The application method and file helper share the name `save_image` but have
-different responsibilities. `self.save_image()` manages the GUI action;
-`save_image(path, image)` is the imported file helper.
+The code temporarily uses decimal numbers to avoid overflowing the 0–255 storage
+range. `np.rint()` rounds, and `np.clip()` limits the answer to 0–255. For example,
+300 becomes 255 and −20 becomes 0. The result is then converted back to `uint8`.
 
-The GUI warns before opening the save dialog if there is no image. The default
-extension is `.png`; the user can select PNG, JPEG, or BMP. Cancelling simply
-returns without writing anything.
+### RGB Channels: `rgb_channels(...)`
 
-The helper validates the extension and calls `cv2.imencode(extension, image)`.
-It checks the success flag, then writes the encoded bytes with `encoded.tofile(path)`.
-The extension determines the output format. Saving uses a full-resolution copy
-of `display_image`, never the canvas pixels or `preview_photo`.
+Each color gets its own multiplier, also called a gain:
 
-M8 takes this copy before opening the native dialog because its nested event loop
-can execute a pending slider callback. That callback may replace the displayed
-result while the user chooses a filename. The local `image_to_save` keeps the
-pixels visible when saving was requested, even if the preview later changes.
-For example, a pending brightness update cannot change an already requested save.
-Cancelling discards the temporary copy without writing a file; both save entry
-points use this same behavior. The dialog presentation itself is unchanged.
+* 0 removes that channel.
+* 1 leaves it unchanged.
+* 2 doubles it, limited to 255.
 
-Encoding happens before opening the destination. An encoding failure therefore
-does not erase an existing file. This is not an atomic save: a filesystem failure
-during writing can still leave a partial file. Expected write errors are reported
-by the GUI.
+The controls say Red, Green, Blue, but the code builds gains in `[blue, green, red]`
+order to match OpenCV. With a red gain of 0, a BGR pixel `[20, 40, 100]` becomes
+`[20, 40, 0]` if the other gains stay at 1.
 
-PNG/BMP round trips preserve tested pixel values; JPEG compression can change
-them slightly. All three formats retain the full image dimensions.
+## 10. Histogram and histogram equalization
 
-## 9. Expected Error Handling
+These functions are in `processing/statistics.py`.
 
-File helpers report problems by raising exceptions; they do not create dialogs.
-`app.py` catches the expected exception types and shows short messages.
+### Histogram: `compute_histogram(image)`
 
-| Situation | Detection | GUI behavior |
-| --- | --- | --- |
-| Open/Save cancelled | Empty dialog path | Return without changing state or writing. |
-| Save without image | `display_image is None` | Show “No Image”; do not open save dialog. |
-| Unsupported extension | `validate_extension` raises `ValueError` | Show Open/Save Failed. |
-| Empty/corrupt image | Empty byte array or failed decode | Show Open Failed; preserve previous image. |
-| Missing/unreadable file | `OSError` from file access | Show Open Failed; preserve previous image. |
-| Invalid/unwritable save path | `OSError` from writing | Show Save Failed; keep in-memory image. |
-| OpenCV decoding/encoding error | `cv2.error` | Show Open/Save Failed and return. |
+A histogram counts how many pixels have each brightness value. There are 256
+possible values, from 0 through 255, so there are 256 counts, or **bins**.
 
-The handlers catch `(OSError, ValueError, cv2.error)`, not every exception. This
-handles anticipated file problems without silently hiding unrelated coding bugs.
-The normal event loop continues after the callback returns.
-
-## 10. Shutdown
-
-Both File → Exit and the window close button invoke `ComputerVisionApp.close()`.
-It calls `cancel_processing()` and `stop_webcam()`, then cancels any pending
-preview update, clears job identifiers, and calls `root.destroy()`. Camera cleanup
-therefore runs for both exit paths.
-
-Cancelling first prevents delayed code from trying to redraw destroyed widgets.
-Destroying the root closes the main window and any histogram child window, then
-lets `mainloop()` return. No camera is opened through M4, so there are no webcam
-resources to release yet.
-
-## 11. Walkthrough to Explain During Evaluation
-
-Suppose the user opens `holiday.png`, resizes the window, then saves `result.bmp`:
-
-1. The File menu invokes `open_image`; a dialog returns the source path.
-2. The file helper checks `.png`, reads bytes, and decodes BGR pixels.
-3. The coordinator stores the original and a separate full-resolution result.
-4. Preview rendering calculates a fitted size, converts BGR to RGB, builds a
-   PPM image, and draws it on the canvas.
-5. Resizing schedules periodic redraws using the latest canvas dimensions.
-   Neither full-resolution array changes.
-6. Save As returns a `.bmp` path. The helper encodes `display_image` as BMP and
-   writes it at the original dimensions.
-7. Closing cancels any pending redraw and destroys the window.
-
-If the user attempts to open an invalid file between steps 5 and 6, loading fails
-before image state is replaced. They can still save the previously loaded image.
-
-## 12. M3 Operation Flow
+For the tiny grayscale image `[0, 0, 128, 255]`:
 
 ```text
-Tools menu / Operation dropdown
-    → select_operation(name)
-    → cancel pending processing
-    → controls.choose(name): rebuild controls with defaults
-    → apply_operation()
-    → require_image()
-    → read parameters → validate → processing function
-    → display_image = result
-    → refresh_preview() → update_histogram() if open
+Brightness 0:   2 pixels
+Brightness 128: 1 pixel
+Brightness 255: 1 pixel
+All other brightness values: 0 pixels
 ```
 
-`require_image()` warns and returns `False` when no original is loaded. Apply
-also warns when no operation is selected. Slider widgets are disabled without an
-image, while menus and buttons remain available to provide this feedback.
+`cv2.calcHist()` calculates the counts after grayscale conversion. `.ravel()`
+turns its result into a simple one-dimensional array of counts.
 
-`apply_operation()` dispatches through explicit `if/elif` branches. Each
-image-changing function receives `current_image`, not the previous result. The
-Histogram branch instead reads `display_image` and returns without replacing it.
-This means only one adjustment is active; operations are not a cumulative pipeline.
+Histogram uses `display_image`, so it describes the current result. It does not
+change the picture. In the chart, the horizontal axis is brightness and the
+vertical axis is the number of pixels.
 
-**Example:** Grayscale produces a two-dimensional result. Selecting Brightness /
-Contrast afterward uses the original color image, so color returns. Repeated
-Apply at unchanged settings produces the same output, rather than compounding it.
+`show_histogram()` opens or reuses a separate window. `update_histogram()` refreshes
+it when the result changes. `create_histogram_window()` builds that window, and
+`display_histogram()` draws the supplied counts without doing image processing.
+Resizing redraws the chart; the old resize callback is removed when counts change.
+If you close the histogram, selecting Histogram again creates a new window.
 
-### Live sliders and Apply
+### Histogram Equalization: `equalize_histogram(image)`
 
-`schedule_operation()` schedules one `after(40, self.apply_operation)` callback.
-Further slider events keep that callback in place; it reads the latest values
-when it runs. This uses the same scheduling idea as preview resizing, with a
-separate `processing_job` identifier. All processing runs on Tkinter's event loop.
+This converts the original to grayscale and calls `cv2.equalizeHist()`. It remaps
+brightness values using their distribution, which can make details easier to see
+when many pixels occupy a narrow brightness range.
 
-`cancel_processing()` cancels and clears that job. Selection changes, Apply,
-Reset, and shutdown call it to avoid applying stale work later. Apply explicitly
-recomputes the selected operation; with live sliders it often produces no visible
-change because the latest result is already shown.
+The output is grayscale, even when the original is colored. Equalization is not
+a guarantee that every picture will look better or that all histogram bars will
+have equal heights.
 
-### Reset versus opening a new image
+## 11. Smoothing and sharpening filters
 
-`reset_image()` cancels pending processing, checks for an image, and calls
-`controls.choose(self.controls.operation.get())`. Rebuilding the controls restores
-their defaults while retaining the selected operation. It then copies the
-original to `display_image`, refreshes the preview, and updates any open histogram.
+These functions are in `processing/filters.py`.
 
-* Brightness resets to 0; contrast and each RGB gain reset to 1.
-* Grayscale and equalization stay selected, but the original image is restored.
-  Apply runs the selected operation again.
-* Histogram stays selected and its graph updates to describe the original.
-* There is no confirmation dialog; Reset never overwrites the source file.
-
-A successful `open_image()` first enables controls and calls `controls.choose("")`,
-then calls Reset. This deliberately clears the selection for a new source image.
-Cancelled or failed opens leave the existing image and settings intact.
-
-## 13. Color Algorithms: `processing/color.py`
-
-All functions return a new array and leave the input unchanged. They accept the
-application's uint8 BGR images; grayscale inputs are also supported.
-
-### `grayscale(image)`
-
-For a two-dimensional image, return a copy. Otherwise, use
-`cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)` to combine channels into a weighted
-intensity, approximately `0.114 × B + 0.587 × G + 0.299 × R`.
-
-For example, a pure red BGR pixel `[0, 0, 255]` becomes intensity 76. The result
-has shape `(height, width)`. Preview rendering converts it to RGB for Tkinter,
-while saving uses the actual grayscale array.
-
-### `brightness_contrast(image, brightness=0, contrast=1)`
-
-Validate brightness in `[-255, 255]` and contrast in `[0, 3]`. Compute:
+A **neighborhood** is a small area around a pixel. A **kernel** is the small window
+or matrix used to calculate a new value from that area. Size 3 means a 3×3 area:
 
 ```text
-result = contrast × original pixel + brightness
+neighbor  neighbor  neighbor
+neighbor   center   neighbor
+neighbor  neighbor  neighbor
 ```
 
-Convert to `float32` before arithmetic so uint8 values cannot wrap around.
-`np.rint` rounds the values; `np.clip(..., 0, 255)` limits them; `astype(np.uint8)`
-returns normal image pixels. Negative results become zero, not their absolute value.
+Odd sizes give the window a clear middle pixel.
 
-**Example:** pixel 100 with contrast 1.5 and brightness −20 becomes 130. Pixel 10
-with brightness −50 and contrast 1 becomes 0. Defaults reproduce the original.
-Contrast 0 with brightness 0 produces black.
+### Median Filter: `median_filter(image, kernel_size=3)`
 
-### `rgb_channels(image, red=1, green=1, blue=1)`
+The median is the middle value after sorting. For `[10, 11, 250]`, it is 11.
+A median filter uses neighborhood medians to reduce isolated bright or dark spots.
+The implementation calls `cv2.medianBlur()`; color channels are processed separately.
 
-Validate each gain in `[0, 2]`. Convert a grayscale input to BGR if necessary.
-Build a gain array in OpenCV order: `[blue, green, red]`. NumPy broadcasts these
-three multipliers across every pixel, then rounds, clips, and converts to uint8.
+A larger neighborhood can remove more small details along with noise.
 
-For a BGR pixel `[50, 100, 200]`, red gain 0 with other gains 1 produces
-`[50, 100, 0]`. All gains 1 preserve the original; all gains 0 produce black.
-The GUI uses increments of 0.05 for channel gains and contrast, and 1 for brightness.
+### Gaussian Smoothing: `gaussian_smoothing(image, kernel_size=5, sigma=0)`
 
-## 14. Statistics: `processing/statistics.py`
+This blurs the image using a weighted average. Nearby pixels receive more weight
+than distant pixels. The implementation calls `cv2.GaussianBlur()`.
 
-### `compute_histogram(image)`
+Kernel size controls the neighborhood width and height. **Sigma** controls the
+spread of the weights. Sigma 0 asks OpenCV to choose a value based on kernel size.
 
-Convert to grayscale, then call:
+### Sharpening: `sharpen(image)`
 
-```python
-cv2.calcHist([gray], [0], None, [256], [0, 256]).ravel()
-```
-
-Channel `[0]` selects the grayscale channel; `None` means no mask, so every pixel
-counts. There are 256 bins over `[0, 256)`, including intensity 255. `.ravel()`
-turns the returned column array into a one-dimensional array of counts.
-
-For `[0, 0, 128, 255]`, bins 0, 128, and 255 contain 2, 1, and 1; all others
-contain zero. Counts total the number of pixels for the tested images. The
-histogram is of grayscale intensity, not three separate RGB distributions.
-
-### `equalize_histogram(image)`
-
-Convert to grayscale and call `cv2.equalizeHist`. Equalization uses the cumulative
-intensity distribution to map populated levels across a wider range. The output
-is grayscale; it does not preserve color.
-
-For `[100, 100, 110, 120]`, the result is `[0, 0, 128, 255]`. Uniform images stay
-uniform, so this operation does not always visibly change an image or guarantee
-a perfectly flat histogram. It always operates on the loaded original in this GUI.
-
-## 15. Histogram Window and Lifecycle
-
-`show_histogram()` creates a window if `histogram_canvas` is absent or its widget
-has been destroyed. Otherwise it reuses the existing window. It updates the graph
-and raises the window with `lift()`.
-
-`create_histogram_window(root)` creates a child `Toplevel` containing an expanding
-canvas. `update_histogram()` computes counts from `display_image` and passes them
-to `display_histogram(canvas, counts)`. It does nothing if the window is closed.
-
-The drawing function scales 256 bars to the plot's width and the highest count to
-its height, then labels intensity and pixel-count axes. Its resize callback
-redraws from the supplied counts; no image-processing algorithm lives in the GUI.
-The graph updates after processing, Reset, or successfully opening another image.
-
-The canvas stores `histogram_resize_callback`, the binding identifier returned by
-Tkinter. Before replacing the resize handler, the old binding and its Tcl command
-are removed with `unbind`. This prevents handlers from accumulating as sliders
-update the graph. Closing the child window destroys its widgets; opening Histogram
-again creates a fresh canvas. Closing the main app destroys the child as well.
-
-Save As continues to save `display_image`, not a screenshot of the graph.
-
-## 16. Numeric Validation and Processing Errors
-
-`validate_number(value, name, minimum, maximum)` converts input with `float`,
-rejects conversion failures, checks `math.isfinite`, and enforces inclusive bounds.
-It returns the validated number or raises a clear `ValueError`.
-
-Sliders constrain ordinary input, but validation inside processing functions also
-protects direct calls from invalid values such as `"abc"`, `NaN`, or infinity.
-Negative brightness is valid; negative contrast or RGB gain is not.
-
-The coordinator handles:
-
-* `tk.TclError` while reading an invalid Tk numeric variable: parameter warning.
-* `ValueError` from validation or an empty operation selection: specific warning.
-* `cv2.error` from processing: a short processing-failed message.
-
-The result is assigned to `display_image` only after the selected image operation
-succeeds. These errors therefore preserve the prior result. Programming errors
-outside the expected cases are not hidden by a catch-all exception handler.
-
-## 17. M4 Filter Controls and Execution Flow
-
-M4 adds Median Filter, Gaussian Smoothing, and Sharpening to `OPERATIONS`. The
-existing menu and dropdown automatically include these names. `apply_operation()`
-has a branch for each new function in `processing/filters.py`.
-
-```text
-Select filter → build default controls → apply defaults
-Edit textbox → retain text without processing
-Click Apply → read strings → validate → filter original → replace result
-    → set applied-result label → refresh preview and any open histogram
-```
-
-`OperationControls.add_entry(label, name, default)` creates a `ttk.Entry` backed
-by a `StringVar` and stores it in `values` under the function parameter name.
-For example, `kernel_size` maps directly to the processing function's argument.
-`get_parameters()` returns strings for textboxes and numbers for sliders.
-
-Using `StringVar` allows incomplete or invalid text to exist while the user is
-editing. Validation happens on Apply, so deleting a value temporarily does not
-trigger a warning. Textbox edits have no live-processing callback. Selection
-still applies the default filter immediately, consistent with other operations.
-
-Reset rebuilds the selected operation's controls with defaults and restores the
-original pixels. It does not reapply the filter until Apply is pressed. Gaussian
-Reset restores kernel `5` and sigma `0`; Median Reset restores kernel `3`.
-
-## 18. Filter Algorithms: `processing/filters.py`
-
-### `median_filter(image, kernel_size=3)`
-
-Validate the kernel, then call `cv2.medianBlur(image, kernel)`. Each output channel
-value is the median of its local square neighborhood. This can remove isolated
-bright/dark noise while retaining edges better than averaging in many cases.
-
-For example, a 3×3 neighborhood with eight zeros and one 255 has median zero.
-A constant image remains constant. OpenCV handles image boundaries internally;
-the output retains the input dimensions and uint8 type.
-
-### `gaussian_smoothing(image, kernel_size=5, sigma=0)`
-
-Validate the kernel and sigma, then call:
-
-```python
-cv2.GaussianBlur(image, (kernel, kernel), sigmaX=sigma)
-```
-
-This computes a weighted local average, with larger weights near the center.
-The square kernel sets the neighborhood size; sigma controls how broadly the
-weights spread within it. The omitted vertical sigma follows the horizontal
-sigma. Sigma zero asks OpenCV to derive the spread from the kernel size.
-
-For example, smoothing a single bright pixel on a black background lowers its
-peak and spreads brightness into neighboring pixels. A constant image stays
-constant. Increasing sigma with a fixed small kernel has limited effect because
-the neighborhood still contains the same small number of pixels.
-
-### `sharpen(image)`
-
-The fixed kernel is:
+Sharpening emphasizes differences between nearby pixels using this fixed matrix:
 
 ```text
  0  -1   0
@@ -614,414 +434,374 @@ The fixed kernel is:
  0  -1   0
 ```
 
-`cv2.filter2D(image, -1, kernel)` applies it independently to image channels.
-The `-1` preserves the input depth; results outside uint8 range saturate to 0 or
-255. The center is amplified and its four immediate neighbors are subtracted.
-The weights sum to one, so constant areas remain unchanged.
+For an interior pixel, this means five times the center minus its top, bottom,
+left, and right neighbors. If all five values are 100, the answer is still 100.
+If the center is 120 and its four neighbors are 100, the answer is 200, making
+the difference stronger.
 
-**Example:** a center value of 120 surrounded by four values of 100 becomes
-`5 × 120 − 4 × 100 = 200`. A neighboring 100 next to that center becomes 80,
-emphasizing their difference. Sharpening can also amplify noise and cause halos.
-There is no adjustable strength parameter in M4.
+`cv2.filter2D(image, -1, kernel)` performs the calculation. `-1` keeps the output
+pixel type the same as the input. Values outside the byte range are limited to
+that range. Sharpening has no editable settings in this application.
 
-All three functions return a new image. The application passes the loaded
-original to them, so repeated Apply does not compound filtering.
+## 12. Finding edges
 
-## 19. Why These Parameter Ranges?
+These functions are in `processing/edges.py`. An **edge** is a place where brightness
+changes sharply, such as the boundary between a dark object and a bright background.
+Both methods return a grayscale-sized image containing only 0 and 255: black
+background and white detected edges.
 
-The assignment requires valid, documented parameters and safe invalid-input
-handling. It does **not** specify the exact upper limits used here.
+### Sobel: `sobel_edges(image, kernel_size=3, mean_ratio=1)`
 
-| Parameter/rule | Reason and whether it is a requirement or a project choice |
+Sobel measures brightness changes in horizontal and vertical directions. Those
+measurements are called **gradients**. The code combines them into an edge strength:
+
+```text
+strength = sqrt(horizontal² + vertical²)
+threshold = mean ratio × average strength across the image
+strength > threshold → white
+otherwise → black
+```
+
+`sqrt` means square root. `np.hypot()` calculates this combined strength.
+`cv2.CV_64F` allows the intermediate gradients to contain negative and large values;
+using 0–255 storage too early would lose information.
+
+For example, average strength 40 and ratio 1.5 give a threshold of 60. Strength
+70 becomes white; strength 60 remains black because the comparison is strictly
+“greater than.” The average is calculated from gradients, not original brightness.
+
+Increasing the ratio keeps the same or fewer edges with the same kernel. Ratio 0
+keeps all nonzero gradients. A constant image stays black because it has no changes.
+
+### Canny: `canny_edges(image, threshold_1=100, threshold_2=200, aperture_size=3)`
+
+Canny uses a lower and an upper threshold. Strong edge candidates can start edges;
+weaker candidates are kept when connected to strong ones. It also thins edge
+responses. This usually gives a different result from directly thresholding Sobel
+strengths.
+
+**Aperture size** is the neighborhood size used for calculating derivatives.
+Threshold 1 must be less than or equal to threshold 2; reversed values cause a
+warning. Equal thresholds are allowed.
+
+The function calls `cv2.Canny()` on a grayscale version of the original. This
+application adds no separate Gaussian smoothing step before that call. It leaves
+OpenCV’s `L2gradient` option at its default `False`, which uses
+`|horizontal| + |vertical|` for gradient strength; the bars mean absolute value.
+
+## 13. Selecting regions and drawing boundaries
+
+These functions are in `processing/segmentation.py`. **Segmentation** means
+separating an image into regions. Here, a **binary mask** is a black-and-white image
+where white marks selected pixels, called foreground, and black marks background.
+
+### Global Thresholding: `global_threshold(image, threshold=127)`
+
+A single brightness cutoff is used for the whole grayscale image:
+
+```text
+brightness > threshold → 255 (white)
+brightness ≤ threshold → 0 (black)
+```
+
+At threshold 127, `[126, 127, 128]` becomes `[0, 0, 255]`. At threshold 255,
+everything is black. The implementation uses `cv2.threshold()` with `THRESH_BINARY`.
+
+### Adaptive Thresholding: `adaptive_threshold(...)`
+
+Adaptive thresholding chooses a local cutoff around each pixel instead of using
+one cutoff everywhere. This can help with uneven lighting.
+
+Its three settings are:
+
+* **Block size:** the width and height of the neighborhood, such as 11×11.
+* **Method:** Mean uses a simple average; Gaussian gives nearby pixels more weight.
+* **Constant C:** an amount subtracted from that local average.
+
+For example, a local average of 100 and C of 2 give a conceptual threshold of 98.
+A larger C lowers the cutoff and generally selects more foreground. A negative C
+raises it. OpenCV uses integer-pixel rounding, so small fractional changes can
+produce the same result.
+
+The code calls `cv2.adaptiveThreshold()` and returns a binary mask. OpenCV handles
+image borders by repeating border pixels, so the block can be larger than the image.
+
+### Contour Detection: `detect_contours(image, threshold=127)`
+
+A **contour** follows the boundary of a selected region. This function:
+
+1. Calls `global_threshold()` to select bright regions.
+2. Uses `cv2.findContours()` to find their outer boundaries.
+3. Makes a color copy of the original.
+4. Draws the boundaries in green using `cv2.drawContours()` with thickness 2.
+
+`RETR_EXTERNAL` means only outer boundaries are retrieved, so holes inside objects
+are not outlined. `CHAIN_APPROX_SIMPLE` saves straight portions using fewer points.
+The `-1` passed to `drawContours()` means “draw all retrieved contours.”
+
+The result is a color image with green outlines, not a black-and-white mask. If
+nothing is selected, no outlines appear. There is no minimum-area filter. Because
+bright regions are selected, a dark object on a bright background may lead to an
+outline of the surrounding bright region instead.
+
+## 14. Which settings are accepted?
+
+A **default** is the starting value shown when selecting an operation. Ranges below
+are this project’s accepted settings; they are not all universal OpenCV limits.
+
+| Operation | Setting | Default | Accepted values |
+| --- | --- | --- | --- |
+| Brightness / Contrast | Brightness | 0 | −255 to 255 |
+| Brightness / Contrast | Contrast | 1 | 0 to 3 |
+| RGB Channels | Each color gain | 1 | 0 to 2 |
+| Median Filter | Kernel size | 3 | Odd integers from 3 to 31 |
+| Gaussian Smoothing | Kernel size | 5 | Odd integers from 3 to 31 |
+| Gaussian Smoothing | Sigma | 0 | 0 to 10; 0 means automatic |
+| Sobel | Kernel size | 3 | 3, 5, or 7 |
+| Sobel | Mean ratio | 1 | 0 to 10 |
+| Canny | Threshold 1 | 100 | 0 to 255, no greater than threshold 2 |
+| Canny | Threshold 2 | 200 | 0 to 255 |
+| Canny | Aperture size | 3 | 3, 5, or 7 |
+| Global Thresholding / Contour Detection | Threshold | 127 | 0 to 255 |
+| Adaptive Thresholding | Block size | 11 | Odd integers from 3 to 31 |
+| Adaptive Thresholding | Constant C | 2 | −50 to 50 |
+| Adaptive Thresholding | Method | Gaussian | Mean or Gaussian |
+
+Brightness and threshold sliders move in steps of 1; contrast and color gains
+move in steps of 0.05. Grayscale, Histogram, Histogram Equalization, and Sharpening
+have no editable parameters.
+
+The 31 limit for filter/block sizes, 10 limit for sigma and Sobel ratio, and ±50
+range for C are practical project choices. Canny’s thresholds measure gradients,
+which can exceed 255; the chosen 0–255 range is not OpenCV’s maximum. The edge-size
+validator restricts Sobel to a small selection and Canny to supported aperture sizes.
+
+### How validation works
+
+`utils/validators.py` provides three helpers:
+
+| Helper | What it checks |
 | --- | --- |
-| Odd kernel dimensions | Required by the selected OpenCV median/Gaussian calls with explicit square kernels; odd sizes have a center pixel and symmetric neighbors. |
-| Minimum kernel 3 | Project choice: 3×3 is the smallest useful smoothing neighborhood. A 1×1 neighborhood would leave the image unchanged. |
-| Maximum kernel 31 | Project choice: bounds the neighborhood and processing work, especially for median filtering, while allowing a broad demonstration range. It is not an OpenCV maximum. |
-| Median default 3 | Starts with mild filtering and a small neighborhood, making its effect easy to compare with the original. |
-| Gaussian default 5 | Provides a modest, visible smoothing neighborhood without beginning at an extreme blur. |
-| Sigma 0 | Supported automatic mode: OpenCV derives sigma from kernel size. It is also the default so users can start by changing only the kernel. |
-| Positive sigma up to 10 | Project choice: gives a useful finite adjustment range alongside kernels up to 31. Ten is not an OpenCV maximum and is not universally optimal for every image. |
-| Reject negative/nonfinite sigma | The UI exposes automatic zero or positive spread only. Negative values have no useful standard-deviation meaning in this interface; NaN and infinity are rejected before OpenCV. |
+| `validate_number()` | Convert to a number, reject infinity/NaN, and check minimum and maximum. |
+| `validate_kernel_size()` | Require whole-number text representing an odd size from 3 to 31. |
+| `validate_edge_size()` | Accept only `3`, `5`, or `7` and return an integer. |
 
-The upper bounds are practical starting policies, **not benchmark-derived
-performance thresholds** or guarantees that every image size will process quickly.
-A kernel of 31 uses a 31×31 neighborhood, compared with 3×3 for the minimum.
-Larger neighborhoods generally require more work, but exact cost depends on the
-algorithm and image dimensions. These limits can be revised if a real use case
-requires it; validation, labels, documentation, and boundary checks must then agree.
+NaN means “not a number”; infinity is not a usable finite setting. Kernel validation
+rejects inputs such as an empty string, `abc`, `3.5`, `4`, `0`, and `33`. It also
+rejects decimal spelling such as `3.0` and text longer than two digits. The optional
+`name` argument lets the same helper say “Block size” for adaptive thresholding.
 
-### Kernel validation details
+Canny checks threshold ordering, and adaptive thresholding checks the method name
+inside their processing functions. These checks also apply when a function is
+called directly rather than through the GUI.
 
-`validate_kernel_size(value, name="Kernel size")` strips surrounding whitespace and accepts ASCII
-decimal digits only. It rejects more than two digits before integer conversion,
-then enforces 3–31 and odd parity. This avoids sending decimal fractions, negative
-values, even values, or enormous strings to OpenCV.
+When validation raises `ValueError`, `app.py` shows an “Invalid Parameter” warning
+and returns to waiting for user input. The previous result remains available.
+`require_image()` similarly warns if no image is available or live capture is active.
 
-The current text format intentionally rejects `3.0`, `+3`, and `003`; users should
-enter a simple integer such as `3`. `03` is accepted. All invalid cases use the
-same clear message: “Kernel size must be an odd integer from 3 to 31.”
-Sigma uses `validate_number`, which accepts numeric text and checks finite values
-and the inclusive range 0–10. On failure, the coordinator warns and retains the
-previous result. Correcting the input and pressing Apply works normally afterward.
+## 15. How is the preview drawn and kept responsive?
 
-## 20. Applied-Result Label
+`refresh_preview()` chooses `latest_frame` during live capture or `display_image`
+otherwise. With no image, it displays a message inviting you to open an image or
+access the webcam.
 
-The selected operation and edited parameters are not necessarily the operation
-and values that produced the visible image. `preview_status` explicitly records
-what is currently displayed.
+To fit a picture in the canvas, it calculates:
 
-`create_layout` receives this `StringVar` and connects it to a label above the
-preview canvas. The label occupies row 0; the expanding canvas occupies row 1.
-The text wraps so it remains readable in a narrow window.
+```python
+scale = min(width / image_width, height / image_height, 1.0)
+```
 
-| Event | Label behavior |
+Both dimensions use the same scale, so the picture keeps its proportions. The
+`1.0` prevents enlarging small images. For a 1600×900 image inside an 800×600 area,
+the preview becomes 800×450, while the saved image remains 1600×900.
+
+The method resizes with `cv2.INTER_AREA`, converts BGR or grayscale to RGB, and
+creates PPM image data. **PPM** is a simple image format Tkinter can read directly,
+so no additional image-display library is needed.
+
+`tk.PhotoImage` creates the displayable object. The application keeps it in
+`self.preview_photo`; otherwise Python could remove the object while the canvas
+still needs it. The canvas draws it in the center. Dimension checks keep very
+small or thin previews at least one pixel wide and high.
+
+### What does `after(40, ...)` mean?
+
+It asks Tkinter to run a function after about 40 milliseconds. It does not pause
+the current function for that time or create another thread.
+
+| Stored job identifier | Scheduled work |
 | --- | --- |
-| Launch | `No image loaded` |
-| Successful Open or Reset | `Original image — no operation applied` |
-| Successful processing | `Applied: <operation>` plus the actual applied parameter values |
-| Textbox edit without Apply | Retain the previous applied label |
-| Invalid input or failed processing | Retain the previous applied label and pixels |
-| Live slider update | Update the label when the new result is produced |
-| Histogram selection | Keep the image's label, since the histogram does not change its pixels |
+| `resize_job` | Redraw after a canvas size change. |
+| `processing_job` | Recalculate after a slider change. |
+| `webcam_job` | Read and show the next webcam frame. |
 
-After a successful image-changing operation, `apply_operation()` builds the label
-from the operation name and the captured parameters. Underscores become spaces,
-parameter names use title case, and numeric values use compact `:g` formatting.
-Since M6, values that cannot be converted to a number retain their text, allowing
-labels such as `Method: Gaussian` without a numeric-conversion error.
-The label changes only after validation and processing succeed.
+An identifier lets the application cancel a waiting callback. `None` means no job
+is waiting. `schedule_preview()` and `schedule_operation()` keep only one waiting
+update of each kind. More resize/slider events leave that update in place; when
+it runs, it uses the latest dimensions or settings. This avoids a growing queue
+of repeated work while allowing updates during continuous dragging.
 
-**Example:** Median Filter is applied with kernel 3, then the user types 5. The
-label still says `Kernel Size: 3` until Apply succeeds. Typing `abc` and pressing
-Apply shows a warning while the kernel-3 result and label remain. Reset retains
-Median Filter in the selector, but correctly labels the displayed pixels as the
-original image rather than claiming that a filter is still applied.
+The delay is approximate. A busy event loop may run the callback later.
+`cancel_processing()` removes pending processing when selecting, applying,
+resetting, starting capture, or closing.
 
-## 21. M5 Controls and Execution Flow
+## 16. What happens when I save?
 
-M5 adds `Sobel Edge Detection` and `Canny Edge Detection` to `OPERATIONS`, so both
-appear in the existing Tools menu and operation selector. The application now has
-ten operations. Each new branch in `apply_operation()` calls its function in
-`processing/edges.py` with `current_image` and the selected parameters.
+The Save As button and File → Save As call the same `app.py` method:
 
 ```text
-Select edge method → rebuild controls → apply defaults
-Edit textbox or parameter dropdown → wait for Apply
-Apply → check image → read parameters → validate → compute binary edge map
-    → replace displayed result → update applied label, preview, and histogram
+Check that a static result exists
+    → copy display_image
+    → ask for a destination filename
+    → encode the copied pixels as PNG, JPEG, or BMP
+    → write the file
 ```
 
-`OperationControls.add_choice(label, name, options, default)` creates a
-`ttk.Combobox` backed by a `StringVar`. It stores that variable in `values` under
-the processing function's parameter name and records the widget in `choices`.
-The dropdown uses `readonly` when an image is loaded and `disabled` otherwise.
-`choose()` clears the old widget lists when rebuilding controls;
-`set_image_loaded()` updates dropdown state alongside entries and sliders.
+The method warns if no image is loaded or the webcam is live. The default extension
+is `.png`. Cancelling the dialog writes nothing.
 
-The edge parameter dropdowns have no processing callback. Like M4 textboxes,
-their edits take effect on Apply. This differs from the live M3 sliders.
-`get_parameters()` returns strings for both edge textboxes and dropdowns.
+There are two functions named `save_image`: the method in `app.py` handles the user
+action; the helper `save_image(path, image)` in `core/file_handler.py` writes pixels.
+The helper checks the extension, calls `cv2.imencode()`, checks its success flag,
+and writes the resulting bytes with `.tofile()`.
 
-Reset retains the operation, restores its default controls, and shows a copy of
-the original. It does not immediately run edge detection again. Opening a new
-image clears the operation. Both edge methods always use the loaded original:
-selecting Gaussian Smoothing followed by Canny does not chain the two operations.
+### Why copy before showing the dialog?
 
-## 22. Edge Algorithms: `processing/edges.py`
+A native save dialog can allow waiting Tkinter callbacks to run. For example, a
+slider update might change the result while you choose a filename. Copying first
+ensures the saved pixels are the result shown when you requested Save As. This is
+the M8 save-timing fix.
 
-Both functions accept an unsigned 8-bit grayscale or BGR image. They use the
-existing `grayscale()` helper and return a new two-dimensional `uint8` array with
-the original height and width. Values are 0 for background and 255 for edges.
-The original array is not modified. Existing preview conversion, histogram
-computation, and full-resolution saving already support this representation.
+Saving uses the full-size result, not the smaller preview. PNG and BMP preserved
+pixel values in recorded checks; JPEG compression can change values slightly.
+All retained full image dimensions in those checks.
 
-### `sobel_edges(image, kernel_size=3, mean_ratio=1)`
+Encoding happens before the destination is opened, so an encoding failure does
+not erase an existing file. A failure while writing can still leave a partial
+file; the application reports expected write errors.
 
-The function validates the kernel and ratio, converts to grayscale, and computes
-horizontal and vertical derivatives with `cv2.Sobel`. The derivative orders are
-`(1, 0)` and `(0, 1)`. Using `cv2.CV_64F` retains negative derivatives and values
-larger than 255; converting to unsigned pixels here would lose information.
+## 17. How does the webcam work?
 
-`np.hypot(horizontal, vertical)` computes the gradient magnitude:
+`Webcam` in `core/webcam.py` handles the device. It does not draw windows.
 
-```text
-magnitude = sqrt(horizontal² + vertical²)
-threshold = mean_ratio × mean(magnitude across the whole image)
-edge pixel = 255 if magnitude > threshold, otherwise 0
-```
-
-The mean is the mean of gradient magnitudes, not the original pixel intensities.
-Thresholding happens before clipping or display conversion. For example, if the
-mean magnitude is 40 and the ratio is 1.5, magnitudes above 60 become white;
-a magnitude exactly equal to 60 remains black.
-
-Both dark-to-light and light-to-dark boundaries can become edges because magnitude
-uses the squared derivatives. Increasing the ratio with the same kernel can only
-retain the same or fewer edge pixels. Ratio zero selects all nonzero gradients.
-On a constant image both derivatives and the threshold are zero; the strict `>`
-comparison keeps the result black rather than marking every pixel as an edge.
-
-### `canny_edges(image, threshold_1=100, threshold_2=200, aperture_size=3)`
-
-The function validates both thresholds and the aperture, checks that threshold 1
-is no greater than threshold 2, then calls `cv2.Canny` on the grayscale image.
-The aperture controls the derivative neighborhood size.
-
-Canny thins gradient responses and uses two thresholds: strong candidates above
-the upper threshold can start edges, while weaker candidates between thresholds
-are retained when connected to strong edges. Isolated weak candidates are removed.
-This is why its output can differ from Sobel's direct magnitude thresholding.
-
-The call leaves `L2gradient` at OpenCV's default `False`, using the L1 gradient
-measure (`|horizontal| + |vertical|`) rather than Sobel's Euclidean magnitude.
-The application adds no Gaussian smoothing step before Canny. Equal thresholds
-are allowed; reversed thresholds are rejected with a clear message rather than
-silently reordered.
-
-## 23. Edge Parameter Validation and Range Choices
-
-| Parameter | Default / accepted values | Reason |
-| --- | --- | --- |
-| Sobel kernel size | 3; choices 3, 5, 7 | Project choice providing a small set of useful derivative neighborhoods. This is not Sobel's full supported range. |
-| Sobel mean ratio | 1; finite numbers 0–10 | One thresholds at the mean gradient magnitude. Zero includes every nonzero gradient. The upper bound is a project demonstration limit, not an OpenCV constraint. |
-| Canny threshold 1 | 100; finite numbers 0–255 | Lower gradient threshold. The range/default are project choices. |
-| Canny threshold 2 | 200; finite numbers 0–255 | Upper gradient threshold; must be at least threshold 1. Gradient magnitudes can exceed 255, so this range is not OpenCV's maximum. |
-| Canny aperture | 3; choices 3, 5, 7 | Matches the supported aperture sizes for this Canny call. Larger apertures change gradient strength and may require different thresholds. |
-
-`validate_edge_size(value, name)` converts the value to stripped text and accepts
-only `"3"`, `"5"`, or `"7"`, returning an integer. It also validates direct function
-calls, even though normal GUI dropdown use already constrains these choices.
-Values such as `3.0`, `4`, empty text, or `abc` raise `ValueError` with the supplied
-parameter name. This validator is separate from M4's odd kernel range of 3–31.
-
-Ratios and thresholds reuse `validate_number()` to reject empty, nonnumeric,
-nonfinite, and out-of-range input. Canny additionally rejects reversed threshold
-ordering. All parameter checks happen before the image-processing calls.
-
-The existing coordinator catches validation errors and shows a warning. It catches
-OpenCV errors separately and shows a processing-failed message. In either case,
-the previous pixels and applied-result label remain intact. Correcting the values
-and pressing Apply retries normally. No image uses the existing no-image warning.
-M5 adds no resource handles or scheduled callbacks requiring additional cleanup.
-
-
-## 24. M6 Controls and Execution Flow
-
-`OPERATIONS` now includes Global Thresholding, Adaptive Thresholding, and Contour
-Detection, bringing the total to thirteen. The existing menu and dropdown include
-them automatically. `apply_operation()` dispatches to the three functions in
-`processing/segmentation.py`, always passing the loaded original.
-
-Global Thresholding and Contour Detection each use a Threshold slider (0–255,
-step 1, default 127). Moving it uses the existing single pending 40 ms processing
-callback. Apply runs the same operation immediately. Adaptive Thresholding uses
-block-size and constant textboxes plus a Mean/Gaussian dropdown; these edits wait
-for Apply. Selecting any operation first applies its defaults.
-
-```text
-Selection or Apply / scheduled slider callback
-    → require image → read controls → validate → segment original
-    → assign display_image → label applied values → refresh preview and histogram
-```
-
-The applied-result label now attempts numeric formatting for each parameter and
-retains text when conversion raises `ValueError`. Thus `constant="2"` displays as
-`Constant: 2`, while `method="Gaussian"` displays as `Method: Gaussian`. Labels
-still describe successful results, not pending edits or failed attempts.
-
-Reset restores the original and default values while retaining the operation.
-Opening another image clears selection. Neither segmentation nor earlier
-operations form a cumulative pipeline. The existing callback cancellation on
-selection, Reset, Apply, and exit also handles the new live threshold sliders.
-
-## 25. Segmentation Algorithms: `processing/segmentation.py`
-
-### `global_threshold(image, threshold=127)`
-
-Validate the threshold, convert the original to grayscale, then call
-`cv2.threshold` with maximum value 255 and `cv2.THRESH_BINARY`. The returned mask
-has the original height and width and uses `uint8` pixels:
-
-```text
-pixel > threshold → 255 (white foreground)
-pixel ≤ threshold → 0 (black background)
-```
-
-For example, intensities `[126, 127, 128]` at threshold 127 become `[0, 0, 255]`.
-At threshold 255 the entire mask is black. At zero, only pixels whose grayscale
-intensity is already zero remain black. The original array is not modified.
-
-### `adaptive_threshold(image, block_size=11, constant=2, method="Gaussian")`
-
-Validate the block size and constant and map the method name to OpenCV's adaptive
-threshold enum. After grayscale conversion, `cv2.adaptiveThreshold` produces a
-binary mask using `cv2.THRESH_BINARY` and maximum value 255.
-
-Instead of one global threshold, each pixel uses its square local neighborhood:
-
-* Mean uses the neighborhood's arithmetic mean.
-* Gaussian uses a weighted mean with more weight near the center.
-* Constant C is subtracted from that local value to form the threshold.
-
-For example, a local value of 100 and C of 2 give a conceptual threshold of 98.
-Larger C lowers the threshold and generally includes more foreground. Negative C
-raises it. OpenCV performs integer-pixel rounding, so fractional C changes may
-produce identical masks. Constant images with C=0 produce black masks; positive
-integer C produces white masks. This differs from Sobel/Canny: thresholding
-selects regions, whereas edge detection selects intensity boundaries.
-
-OpenCV replicates border pixels when extending neighborhoods. A block may exceed
-the image dimensions, so even a 1×1 image can be processed. The function returns
-a full-resolution two-dimensional `uint8` mask without modifying the input.
-
-### `detect_contours(image, threshold=127)`
-
-First call `global_threshold()` to create a binary foreground mask. Reusing it
-keeps the threshold rule and validation identical to Global Thresholding.
-`cv2.findContours` then uses:
-
-* `RETR_EXTERNAL` to retrieve only outer boundaries, leaving holes unoutlined.
-* `CHAIN_APPROX_SIMPLE` to compress straight boundary runs into their endpoints.
-
-The function copies a BGR original, or converts a grayscale original to BGR.
-`cv2.drawContours` draws all retrieved contours (`-1`) in BGR green `(0, 255, 0)`
-with thickness 2. It modifies only this result array, preserving the original.
-The returned image has shape `(height, width, 3)` and dtype `uint8`.
-
-A bright rectangle on black receives a green outline, with its interior and the
-background retained away from the outline. If the mask has no foreground, there
-are no outlines and the result preserves the original appearance. No minimum-area
-filtering is applied. Dark objects on bright backgrounds can instead select the
-surrounding bright region; this implementation does not invert foreground polarity.
-
-The existing preview supports both binary masks and BGR contour overlays. Saving
-uses the full-resolution result; histogram display converts the current result
-to grayscale as before. No new windows, resource handles, or dependencies are added.
-
-## 26. Segmentation Validation and Range Choices
-
-| Parameter | Accepted values / default | Rationale |
-| --- | --- | --- |
-| Global/contour threshold | 0–255, default 127; slider step 1 | Covers unsigned 8-bit grayscale intensity. The processing function also accepts finite fractional thresholds in this range. |
-| Adaptive block size | Odd integers 3–31, default 11 | OpenCV requires odd values greater than one. The upper bound 31 and default 11 are practical project choices. |
-| Adaptive constant C | Finite numbers −50–50, default 2 | Allows lowering or raising the local threshold. The bounds are project choices, not OpenCV limits. |
-| Adaptive method | Mean or Gaussian, default Gaussian | Explicitly selects the local averaging algorithm. Other names are rejected. |
-
-The existing `validate_kernel_size` helper now has an optional `name` argument.
-Filters retain the default `"Kernel size"`; adaptive thresholding passes
-`name="Block size"` so warnings identify the correct control. Digit syntax, odd
-parity, and range checks are unchanged. Empty text, fractions, even sizes, and
-out-of-range values are rejected before processing.
-
-`validate_number()` handles threshold and C conversion, bounds, and finite-value
-checks. Adaptive method validation rejects unsupported names before calling
-OpenCV. The normal GUI restricts method choices, but processing functions also
-validate their parameters for direct calls.
-
-Expected validation failures raise `ValueError`; the coordinator shows a warning
-and leaves the previous result and label intact. OpenCV failures use the existing
-processing-error dialog. Controls are disabled without an image, and menu/Apply
-actions use the existing no-image warning. Corrected values can be applied normally.
-
-
-## 27. M7 Camera Ownership: `core/webcam.py`
-
-`Webcam` owns a single `capture` handle, initially `None`. It has no Tkinter
-responsibilities; the coordinator owns scheduling and displays errors.
-
-* `start()` releases any previous handle and opens `cv2.VideoCapture(0)`, the
-  default camera. It checks `isOpened()`. Failure releases the handle and raises
-  a clear `ValueError`; OpenCV errors are also cleaned up and propagated.
-* `read()` requires an active handle and calls `capture.read()`. A false success
-  flag, missing frame, or empty array is a failure. Expected failures release the
-  handle before propagating `ValueError` or `cv2.error`.
-* `stop()` clears the stored handle and calls `release()` if one exists. Repeated
-  stops have no effect once the handle is `None`.
-
-Frames normally arrive as full-resolution BGR arrays. No files are written and
-no video is recorded automatically.
-
-## 28. Webcam State and Callback Flow
-
-The coordinator adds these fields:
-
-| State | Purpose |
+| Method | What it does |
 | --- | --- |
-| `webcam` | Camera owner from `core/webcam.py`. |
-| `webcam_running` | Whether the main preview is in live mode. |
-| `webcam_job` | The one pending frame callback, or `None`. |
-| `latest_frame` | Most recently read full-resolution frame. |
-| `static_status` | Applied-result label to restore when live mode ends. |
-| `snapshot_button`, `stop_button` | Widgets returned by the layout. |
+| `start()` | Release any old camera handle, open the default camera with `cv2.VideoCapture(0)`, and check it opened. |
+| `read()` | Read one frame; reject a failed read, missing frame, or empty frame. |
+| `stop()` | Clear the stored handle and call `release()` if a camera is open. |
 
-`start_webcam()` ignores repeated starts while already running and cancels pending
-processing. It opens the camera and reads the first frame before entering live
-mode. Startup failure leaves the previous static image intact and shows an error.
-After a successful first read it saves the static label, disables processing
-controls and operation selection, shows the camera buttons, and displays the frame.
-An existing histogram closes because it would describe the previous static result.
+A **frame** is one picture from the video stream. A **handle** is the object used
+to communicate with the camera. Releasing it tells the system this application is
+finished using the device. Repeated stops do nothing once the handle is cleared.
+Expected opening/reading failures also trigger cleanup.
+
+`app.py` controls how frames appear:
 
 ```text
-Start → open camera → read first frame → show live preview
-    → after(30, update_webcam)
-    → read frame → refresh preview → schedule next callback
+start_webcam()
+    → open camera and read the first frame
+    → remember the previous result label
+    → enter live mode and show camera buttons
+    → display the frame
+    → schedule update_webcam() after about 30 ms
+
+update_webcam()
+    → read and show another frame
+    → schedule the next update
 ```
 
-`update_webcam()` clears the consumed job identifier, reads the next frame, and
-schedules another callback only after displaying it. Read failure calls
-`stop_webcam()` before showing a message. ValueError messages are user-oriented;
-OpenCV errors receive a short generic message rather than a technical traceback.
+The camera object is stored in `webcam`. `webcam_running` tells the application
+whether live mode is active, and `latest_frame` holds the latest full-size camera
+image. `static_status` remembers the previous static result’s label.
 
-The 30 ms delay is not a frame-rate guarantee. Camera reads and display work run
-on Tkinter's event loop, so driver latency can affect responsiveness. There is no
-worker thread or blocking Python capture loop.
+The original and processed static images stay in memory during capture. Starting
+the webcam disables processing controls and closes an existing histogram, since
+it would describe the old static result. No video or image is saved automatically.
 
-`refresh_preview()` selects `latest_frame` in live mode and `display_image` in
-static mode. Both use the existing aspect-preserving resize and BGR-to-RGB display
-conversion. `current_image` and `display_image` retain the prior static images
-throughout live capture; the live feed does not overwrite them.
+Camera reads run in the same Tkinter event loop as the interface. The 30 ms delay
+is not a guaranteed frame rate, and slow camera reads can affect responsiveness.
 
-## 29. Snapshot, Stop, and User Actions
+### Snapshot versus Stop
 
-`take_snapshot()` requires a running camera and a valid latest frame. It copies
-that frame, stops/releases the camera, assigns the copy to `current_image`, enables
-image controls, clears the selected operation, and resets the preview. The snapshot
-becomes the new original, with a separate displayed copy. Processing and saving
-then follow the same paths as a loaded image, at full capture resolution.
+`take_snapshot()` copies the latest frame, stops the camera, and makes that copy
+the new original. It clears operation selection and resets the displayed result.
+The snapshot can then be processed and saved just like an opened file.
 
 `stop_webcam()` cancels the frame callback, releases the camera, clears live state,
-and hides/disables both camera buttons. If capture was active, it restores image
-control availability, the operation selector, and the saved applied-result label,
-then redraws the previous static result. Parameter values and operation selection
-remain intact. Without a prior image, the empty preview returns.
+and restores the previous static result and label. It re-enables appropriate
+controls. If there was no previous image, the empty preview returns.
 
-The buttons share a frame below the preview. `grid_remove()` hides the entire
-frame initially and on Stop; `grid()` restores its placement when capture starts.
-Consequently, snapshot, failure, and successful image opening also hide the buttons
-through their shared Stop path, without leaving an empty button row.
+The Take Snapshot and Stop Webcam buttons are shown only during live capture.
+`grid_remove()` hides their containing frame without forgetting its placement;
+`grid()` shows it again next time.
 
-| Action during capture | Behavior |
+| Action during live capture | Behavior |
 | --- | --- |
-| Take Snapshot | Stop and release, then use the copied frame as the new original. |
-| Stop Webcam | Release and restore the previous static image and settings. |
-| Tools operation, Apply, Reset, or Save As | Warn to take a snapshot or stop first. |
-| Move a parameter control | Controls are disabled; processing scheduling also checks live mode. |
-| Successfully open an image | Stop capture and replace the original with the loaded image. |
-| Cancel Open or fail to load a file | Leave live capture running. |
-| Exit | Cancel callbacks and release the camera before destroying the window. |
+| Apply, Reset, select an operation, or Save As | Show a reminder to take a snapshot or stop first. |
+| Successfully open a file | Stop the webcam and use the opened image. |
+| Cancel Open or choose an unreadable file | Keep capture running. |
+| Camera read fails | Stop and release the camera, restore the static view, and show an error. |
+| Start again while already running | Keep the existing capture; do not open another. |
+| Close the application | Cancel callbacks and release the camera. |
 
-`warn_live_webcam()` supplies the shared reminder. Guards in selection, image
-validation, saving, and scheduling prevent static processing from replacing a
-live preview. The camera remains available for another start after Stop, snapshot,
-or a handled failure, subject to operating-system and device availability.
+## 18. How are errors and closing handled?
 
-## 30. Direct Save Button and Native Dialog
+Expected mistakes should lead to a clear message and a usable application.
 
-The Save As… button below Reset and File → Save As both invoke `save_image()`.
-They therefore share no-image/live-mode guards, cancellation handling, extension
-choices, and full-resolution saving. No second saving implementation is introduced.
+```text
+Detect the problem → show feedback → return safely → wait for another action
+```
 
-The current code retains `filedialog.asksaveasfilename(parent=self.root, ...)`.
-The proposed standalone macOS dialog change was reverted and is not part of M7.
-The reported initial clipping of the native Save dialog remains a tracked UI issue;
-this documentation does not claim it was fixed.
+The helpers report problems with exceptions; `app.py` decides which dialog to show.
+For file actions it catches `OSError` (file access problems), `ValueError` (invalid
+content or extension), and `cv2.error` (OpenCV failures). Processing handles invalid
+parameters and OpenCV errors; reading invalid Tkinter slider values handles
+`tk.TclError`. These are specific expected error types, rather than a catch-all
+that could hide unrelated programming bugs.
+
+| Example | Intended response |
+| --- | --- |
+| Apply with no image | Ask the user to open an image. |
+| Apply with no selected operation | Ask the user to choose an operation. |
+| Invalid filter size | Show a warning and preserve the last successful result. |
+| Corrupt or unreadable image | Show Open Failed and keep the current image. |
+| Unwritable save location | Show Save Failed and keep the in-memory result. |
+| Unavailable webcam | Show an error and preserve the static image. |
+| Snapshot without an active frame | Ask the user to start the webcam first. |
+
+Both File → Exit and the window’s close button call `close()`. It cancels pending
+processing, stops the webcam, cancels a pending preview update, and calls
+`root.destroy()`. This closes the main window and histogram window and allows
+`mainloop()` to finish. Cancelling jobs first prevents them from later trying to
+update widgets that have been destroyed.
+
+The recorded checks and their limits are in the progress tracker. Camera checks
+performed by the agent used simulated cameras; physical camera behavior was not
+independently tested by the agent. Initial clipping of the native macOS Save As
+dialog remains a recorded unresolved UI issue. The current code keeps the native
+dialog attached to the main window with `parent=self.root`.
+
+## 19. Follow one complete example through the code
+
+Suppose you open `photo.png`, apply Median Filter with size 5, and save `result.png`:
+
+1. `main.py` creates the window and starts the event loop.
+2. File → Open calls `ComputerVisionApp.open_image()`.
+3. `load_image()` reads and decodes the file into BGR pixel numbers.
+4. The app stores the original in `current_image` and a copy in `display_image`.
+5. `refresh_preview()` draws a fitted version of that copy.
+6. Selecting Median Filter creates its controls and applies the default size 3.
+7. You type 5 and click Apply. `get_parameters()` returns `{"kernel_size": "5"}`.
+8. `median_filter()` validates 5 and runs `cv2.medianBlur()` on the original.
+9. The app stores the returned result in `display_image` and updates the label.
+10. Save As copies that full-size result before asking for a filename.
+11. The file helper encodes the copy as PNG and writes `result.png`.
+12. Closing cancels pending work, releases any camera, and destroys the window.
+
+If you type `abc` at step 7, validation stops that attempt. The size-3 result stays
+visible, and you can correct the value and try again.
+
+To trace another feature, follow the same route: find its name in
+`gui/controls.py`, find its branch in `app.py`, then read the corresponding function
+in `processing/`. This connects what you see on the screen to the code that does
+the work.
