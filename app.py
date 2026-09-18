@@ -29,9 +29,9 @@ class ComputerVisionApp:
         self.root.title("Interactive Computer Vision Tool")
         self.root.geometry("1000x650")
         self.root.minsize(700, 450)
-        self.current_image = None
-        self.display_image = None
-        self.preview_photo = None
+        self.original_image = None
+        self.display_image = None # Result full-resolution pixel array.
+        self.preview_photo = None # Tkinter-compatible image sized for the preview.
         self.resize_job = None
         self.processing_job = None
         self.histogram_canvas = None
@@ -74,7 +74,7 @@ class ComputerVisionApp:
             return
         self.stop_webcam()
         # Preserve the loaded original separately from the result to display/save.
-        self.current_image = image
+        self.original_image = image
         self.controls.set_image_loaded(True)
         self.controls.choose("")
         self.reset_image()
@@ -112,7 +112,7 @@ class ComputerVisionApp:
         if self.webcam_running:
             self.warn_live_webcam()
             return False
-        if self.current_image is None:
+        if self.original_image is None:
             messagebox.showwarning(
                 "No Image", "Please open an image before using this operation.",
                 parent=self.root,
@@ -134,7 +134,7 @@ class ComputerVisionApp:
         self.apply_operation()
 
     def schedule_operation(self):
-        if not self.webcam_running and self.current_image is not None and self.processing_job is None:
+        if not self.webcam_running and self.original_image is not None and self.processing_job is None:
             self.processing_job = self.root.after(40, self.apply_operation)
 
     def apply_operation(self):
@@ -150,29 +150,29 @@ class ComputerVisionApp:
         try:
             # Recompute from the original so repeated Apply/slider changes do not compound.
             if operation == "Grayscale":
-                result = grayscale(self.current_image)
+                result = grayscale(self.original_image)
             elif operation == "Brightness / Contrast":
-                result = brightness_contrast(self.current_image, **parameters)
+                result = brightness_contrast(self.original_image, **parameters)
             elif operation == "RGB Channels":
-                result = rgb_channels(self.current_image, **parameters)
+                result = rgb_channels(self.original_image, **parameters)
             elif operation == "Histogram Equalization":
-                result = equalize_histogram(self.current_image)
+                result = equalize_histogram(self.original_image)
             elif operation == "Median Filter":
-                result = median_filter(self.current_image, **parameters)
+                result = median_filter(self.original_image, **parameters)
             elif operation == "Gaussian Smoothing":
-                result = gaussian_smoothing(self.current_image, **parameters)
+                result = gaussian_smoothing(self.original_image, **parameters)
             elif operation == "Sharpening":
-                result = sharpen(self.current_image)
+                result = sharpen(self.original_image)
             elif operation == "Sobel Edge Detection":
-                result = sobel_edges(self.current_image, **parameters)
+                result = sobel_edges(self.original_image, **parameters)
             elif operation == "Canny Edge Detection":
-                result = canny_edges(self.current_image, **parameters)
+                result = canny_edges(self.original_image, **parameters)
             elif operation == "Global Thresholding":
-                result = global_threshold(self.current_image, **parameters)
+                result = global_threshold(self.original_image, **parameters)
             elif operation == "Adaptive Thresholding":
-                result = adaptive_threshold(self.current_image, **parameters)
+                result = adaptive_threshold(self.original_image, **parameters)
             elif operation == "Contour Detection":
-                result = detect_contours(self.current_image, **parameters)
+                result = detect_contours(self.original_image, **parameters)
             elif operation == "Histogram":
                 self.show_histogram()
                 return
@@ -204,7 +204,7 @@ class ComputerVisionApp:
         if not self.require_image():
             return
         self.controls.choose(self.controls.operation.get())
-        self.display_image = self.current_image.copy()
+        self.display_image = self.original_image.copy()
         self.preview_status.set("Original image — no operation applied")
         self.refresh_preview()
         self.update_histogram()
@@ -279,7 +279,7 @@ class ComputerVisionApp:
         self.stop_button.configure(state="disabled")
         self.snapshot_button.master.grid_remove()
         if was_running:
-            self.controls.set_image_loaded(self.current_image is not None)
+            self.controls.set_image_loaded(self.original_image is not None)
             self.controls.selector.configure(state="readonly")
             self.preview_status.set(self.static_status)
             self.static_status = None
@@ -291,7 +291,7 @@ class ComputerVisionApp:
             return
         image = self.latest_frame.copy()
         self.stop_webcam()
-        self.current_image = image
+        self.original_image = image
         self.controls.set_image_loaded(True)
         self.controls.choose("")
         self.reset_image()
