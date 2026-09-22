@@ -383,6 +383,14 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Recent Changes
 
+* Revised the editable DOCX report on 2026-09-22 to emphasize feature purpose,
+  user interaction, and high-level implementation. Includes all 13 operations,
+  tools, parameter ranges/effects, a conclusion, five captioned screenshot spaces,
+  and a first-page demo-link placeholder. Checked against the assignment PDF and
+  current code; DOCX structure and package integrity passed. Six pages are planned
+  with explicit page breaks; rendered pagination remains for the user to check
+  after inserting screenshots. No application runtime changes or new runtime tests.
+
 * Added optional Windows/macOS packaging and beginner build/install instructions;
   built and launch-smoke-checked the macOS app. Windows runtime verification remains.
 
@@ -436,4 +444,4 @@ instructions. OpenCV is constrained to version 4.x to use compatible prebuilt pa
 
 ## Last Updated
 
-2026-09-17
+2026-09-22
